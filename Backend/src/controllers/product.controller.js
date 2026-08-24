@@ -2,13 +2,25 @@ import productModel from '../models/product.model.js';
 
 export const createProduct = async (req, res) => {
     try {
-        const { title, description, price, images } = req.body;
+        const { title, description, priceAmount, priceCurrency } = req.body;
+
+        const images = await Promise.all(req.files.map(async (file) => {
+            return await uploadFile({
+                buffer: file.buffer,
+                fileName: file.originalname,
+                folder: 'snitch/products'
+            })
+        }));
+
 
         const product = await productModel.create({
             title,
             description,
             seller: req.user._id,
-            price,
+            price: {
+                amount: priceAmount,
+                currency: priceCurrency,
+            },
             images,
         });
 
@@ -17,6 +29,7 @@ export const createProduct = async (req, res) => {
             message: 'Product created successfully',
             product,
         });
+
     } catch (error) {
         res.status(500).json({
             success: false,
