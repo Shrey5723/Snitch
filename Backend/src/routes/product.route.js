@@ -13,7 +13,7 @@ const upload = multer({
 
 const router = express.Router();
 
-router.get('/', getProducts);
+router.get('/seller', authorizeRole(['seller']), getProducts);
 router.post('/', authorizeRole(['seller']), createProductValidator, upload.array('images', 7), createProduct);
 
 export default router;

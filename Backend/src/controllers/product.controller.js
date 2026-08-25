@@ -18,7 +18,7 @@ export const createProduct = async (req, res) => {
             description,
             seller: req.user._id,
             price: {
-                amount: priceAmount,
+                amount: Number(priceAmount),
                 currency: priceCurrency,
             },
             images,
@@ -40,8 +40,11 @@ export const createProduct = async (req, res) => {
 };
 
 export const getProducts = async (req, res) => {
+
+    const seller = req.user
+
     try {
-        const products = await productModel.find().populate('seller', 'fullName email avatar');
+        const products = await productModel.find({ seller: seller._id });
         res.status(200).json({
             success: true,
             products,
