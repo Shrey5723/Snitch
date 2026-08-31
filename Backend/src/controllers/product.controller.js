@@ -57,3 +57,50 @@ export const getProducts = async (req, res) => {
         });
     }
 };
+
+export const getAllProducts = async (req, res) => {
+    try {
+        const products = await productModel
+            .find({})
+            .populate('seller', 'fullName')
+            .sort({ createdAt: -1 });
+        res.status(200).json({
+            success: true,
+            products,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch products',
+            error: error.message,
+        });
+    }
+};
+
+export const getProductById = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const product = await productModel
+            .findById(productId)
+            .populate('seller', 'fullName email');
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            product,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch product details',
+            error: error.message,
+        });
+    }
+};
+

@@ -1,7 +1,14 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { createProduct as createProductApi, getSellerProducts as getSellerProductsApi } from '../services/product.api.js';
 import {
+  createProduct as createProductApi,
+  getSellerProducts as getSellerProductsApi,
+  getAllProducts as getAllProductsApi,
+  getProductById as getProductByIdApi,
+} from '../services/product.api.js';
+import {
+  setProducts,
   setSellerProducts,
+  setCurrentProduct,
   addProduct,
   setLoading,
   setError,
@@ -11,7 +18,7 @@ import {
 
 export const useProduct = () => {
   const dispatch = useDispatch();
-  const { sellerProduct, loading, error, successMessage } = useSelector((state) => state.products || {});
+  const { products, sellerProduct, currentProduct, loading, error, successMessage } = useSelector((state) => state.products || {});
 
   const handleCreateProduct = async (formData) => {
     dispatch(setLoading(true));
@@ -31,6 +38,42 @@ export const useProduct = () => {
         err.response?.data?.errors?.[0]?.msg ||
         err.message ||
         'Failed to create product';
+      dispatch(setError(msg));
+      dispatch(setLoading(false));
+      return { success: false, error: msg };
+    }
+  };
+
+  const handleGetProducts = async () => {
+    dispatch(setLoading(true));
+    try {
+      const data = await getAllProductsApi();
+      dispatch(setProducts(data.products || []));
+      dispatch(setLoading(false));
+      return { success: true, data: data.products };
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to fetch products';
+      dispatch(setError(msg));
+      dispatch(setLoading(false));
+      return { success: false, error: msg };
+    }
+  };
+
+  const handleGetProductById = async (productId) => {
+    dispatch(setLoading(true));
+    try {
+      const data = await getProductByIdApi(productId);
+      dispatch(setCurrentProduct(data.product));
+      dispatch(setLoading(false));
+      return { success: true, data: data.product };
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to fetch product details';
       dispatch(setError(msg));
       dispatch(setLoading(false));
       return { success: false, error: msg };
@@ -61,8 +104,12 @@ export const useProduct = () => {
 
   return {
     handleCreateProduct,
+    handleGetProducts,
+    handleGetProductById,
     handleGetSellerProducts,
+    products,
     sellerProduct,
+    currentProduct,
     loading,
     error,
     successMessage,
@@ -71,3 +118,4 @@ export const useProduct = () => {
 };
 
 export default useProduct;
+

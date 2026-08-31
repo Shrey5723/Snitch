@@ -25,3 +25,21 @@ export async function getSellerProducts() {
         throw error;
     }
 }
+
+export async function getAllProducts() {
+    try {
+        const response = await productApiInstance.get('/all');
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function getProductById(productId) {
+    try {
+        const response = await productApiInstance.get(`/${productId}`);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}

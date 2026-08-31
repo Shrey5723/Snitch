@@ -3,16 +3,26 @@ import { createSlice } from '@reduxjs/toolkit';
 const productSlice = createSlice({
   name: 'products',
   initialState: {
+    products: [],
     sellerProduct: [],
+    currentProduct: null,
     loading: false,
     error: null,
     successMessage: null,
   },
   reducers: {
+    setProducts: (state, action) => {
+      state.products = Array.isArray(action.payload)
+        ? action.payload
+        : action.payload?.products || [];
+    },
     setSellerProducts: (state, action) => {
       state.sellerProduct = Array.isArray(action.payload)
         ? action.payload
         : action.payload?.products || [];
+    },
+    setCurrentProduct: (state, action) => {
+      state.currentProduct = action.payload?.product || action.payload;
     },
     addProduct: (state, action) => {
       if (action.payload) {
@@ -36,7 +46,9 @@ const productSlice = createSlice({
 });
 
 export const {
+  setProducts,
   setSellerProducts,
+  setCurrentProduct,
   addProduct,
   setLoading,
   setError,
