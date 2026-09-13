@@ -103,13 +103,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row items-center justify-between relative overflow-hidden select-none">
+    <div className="h-dvh bg-white flex flex-col lg:flex-row items-center justify-between relative overflow-hidden select-none">
 
       {/* LEFT COLUMN: Clean Editorial Login Card (Matching Reference Photo) */}
-      <div className="w-full lg:w-[55%] flex flex-col items-center justify-center p-6 sm:p-10 lg:p-16 z-10">
+      <div className="w-full lg:w-[55%] flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-10 z-10 overflow-hidden">
 
         {/* Brand Header: S N I T C H (Matching D O G I E S styling in photo) */}
-        <div className="mb-6 sm:mb-8 text-center">
+        <div className="mb-3 sm:mb-5 text-center">
           <Link to="/" className="inline-block group">
             <h1 className="font-heading font-black text-3xl sm:text-4xl tracking-[0.35em] text-zinc-900 uppercase">
               S N I T C H
@@ -121,12 +121,12 @@ export default function Login() {
         </div>
 
         {/* Elevated Floating White Card (Matching Reference Card) */}
-        <div className="editorial-card w-full max-w-[400px] sm:max-w-[420px] p-8 sm:p-10 animate-fade-in">
+        <div className="editorial-card w-full max-w-[400px] sm:max-w-[420px] p-5 sm:p-7 lg:p-8 animate-fade-in">
 
           {/* Status / Alert Messages */}
           {(error || localSuccess || successMessage || searchParams.get('error')) && (
             <div
-              className={`mb-6 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-medium border transition-all ${localSuccess || successMessage
+              className={`mb-4 p-2.5 rounded-2xl flex items-center gap-2.5 text-xs font-medium border transition-all ${localSuccess || successMessage
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                 : 'bg-rose-50 text-rose-800 border-rose-200'
                 }`}
@@ -141,7 +141,7 @@ export default function Login() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Email / Username Underline Input */}
             <div className="pt-2">
@@ -194,7 +194,7 @@ export default function Login() {
             </div>
 
             {/* Primary Black Pill Action Button: Log in (Matching Reference Photo) */}
-            <div className="flex justify-center pt-4">
+            <div className="flex justify-center pt-2">
               <button
                 type="submit"
                 disabled={loading}
@@ -212,7 +212,7 @@ export default function Login() {
             </div>
 
             {/* Sign Up Link (Matching Reference Photo) */}
-            <div className="text-center pt-2">
+            <div className="text-center pt-1">
               <Link
                 to="/register"
                 className="text-xs sm:text-sm font-bold text-zinc-800 hover:text-black transition-colors"
@@ -236,7 +236,7 @@ export default function Login() {
             </div>
 
             {/* Divider */}
-            <div className="relative my-4 flex items-center justify-center">
+            <div className="relative my-2 flex items-center justify-center">
               <div className="border-t border-zinc-100 w-full"></div>
               <span className="bg-white px-3 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                 or
@@ -275,14 +275,14 @@ export default function Login() {
         </div>
 
         {/* Brand Security Seal */}
-        <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+        <div className="mt-4 sm:mt-5 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
           <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
           <span>Snitch Apparel • Official Member Authentication</span>
         </div>
       </div>
 
       {/* RIGHT COLUMN: High-Fashion Studio Portrait (Matching Reference Photo Layout) */}
-      <div className="hidden lg:flex lg:w-[45%] h-screen relative items-center justify-end overflow-hidden select-none bg-white">
+      <div className="hidden lg:flex lg:w-[45%] h-dvh relative items-center justify-end overflow-hidden select-none bg-white">
         <div className="relative w-full h-full flex items-center justify-center">
           <img
             src="/assets/snitch_model.jpg"

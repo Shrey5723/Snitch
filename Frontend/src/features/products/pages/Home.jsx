@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { addToCart } from '../state/cart.slice.js';
 import { useProduct } from '../Hooks/useProduct';
 import { Link } from 'react-router';
 import {
@@ -20,75 +21,25 @@ import {
 
 const CATEGORIES = ['View All', 'Shirts', 'Jackets', 'Pants', 'Sneakers', 'Accessories'];
 
-// Curated high-fashion items for fallback display if database is empty
-const CURATED_FEATURED_PRODUCTS = [
-    {
-        _id: 'sample-1',
-        title: 'Obsidian Tech-Trench',
-        description: 'Water-resistant matte structural trench coat engineered with modular storm flap and magnetic closures.',
-        price: { amount: 3499, currency: 'INR' },
-        category: 'Jackets',
-        tag: 'New',
-        images: [{
-            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCBx6WMWY_7ZVpiDmf6kJYkIgvC6nN6nsqi72feb6NglDYi0sDBipqXsM3G-g_8ERRGGu8Qv0Jhm05_UWY2jXySZF4x5_-jIlv1lh--G9avzDDECEbadt_FmzkzRWlvQiQiKPFg6j50NuAJcIaXszHtgwU_hsUrHIqS_eOwBEGexTlNKHJRZw0sqcpA1DMoUX5tHgSrvKLfrA1L_vJ-DqEthmJLiZqYQIjlJF9vJoTSwlFGnsWRT8I28UannZ4jsF_4jP5sgj-iadM',
-            alt: 'Obsidian Tech-Trench'
-        }]
-    },
-    {
-        _id: 'sample-2',
-        title: 'K-7 Tactical Cargos',
-        description: 'Relaxed-fit dark charcoal cargo trousers crafted with reinforced knee gussets and heavy matte alloy D-rings.',
-        price: { amount: 2899, currency: 'INR' },
-        category: 'Pants',
-        tag: 'Popular',
-        images: [{
-            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD5NOCw31t9aMh2_BrktGvvv_dKZWRz1F0LeNQfEAymgSz3Ys20e5O-vSIWrdB0yNt_Ij6EcZCpjMPYHjEZE6qREVm2BPQlOTqj6NrtjSM6n0gjSw3iu9kyaA1pqJ_K-MXh9tTFGCfe1BWd6MDpN-LMh6G-w-sbYkZ9ZCY4N2nonCTRNBVxBbh8rKdpvB9mXMopJkydwBNYI6dN-H-GfzfN-5TYIWX366fc2u8aA7YIqd0NvoBItNygvIhPZSabHX_RtH-0RrnHIpY',
-            alt: 'K-7 Tactical Cargos'
-        }]
-    },
-    {
-        _id: 'sample-3',
-        title: 'Aero Structural Hoodie',
-        description: 'Architectural heavyweight 480 GSM organic cotton french terry hoodie with geometric darting and hidden kangaroo pocket.',
-        price: { amount: 2499, currency: 'INR' },
-        category: 'Shirts',
-        tag: 'Bestseller',
-        images: [{
-            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDqk48LGvYAe08YSncloaCRvM2BSDKrIb7p6G31gQJ0T0Y_OwJWnhtAHvkemK4e839JWkvlJbfWqXETGEBbgy5TuODzDjUau8iJObTa4693nLngDU8ThcPKJsVL15ixbqjJ-9ltVJW421cl7BG7e8ydIVmLEdBrUKo-IMwAlefjYUiQDJLB0wfpfP69akna7UuJxc3LTYPplHiK7444REdwW4_lNEJ_9TeIeWcwvqQIMiWJ1Ye6YFLPScby5a1Ebr3OnQeadV-NoTo',
-            alt: 'Aero Structural Hoodie'
-        }]
-    },
-    {
-        _id: 'sample-4',
-        title: 'Void Knit Sneakers',
-        description: 'Sculptural sock-runner silhouettes with high-density EVA midsole, zero-lace dynamic elastic weave.',
-        price: { amount: 4299, currency: 'INR' },
-        category: 'Sneakers',
-        tag: 'Exclusive',
-        images: [{
-            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGnffq_FCaXv9XSJr3-fSdFU_kHLyJ3SGShlHFUCmo_fzdBx7KGkdgvzwoCs4EzgdMrEMA_rjB0a8qqm9WHWlGCLngpbJ18vaXqnv_7jRhrD2-jbN38wGqkWqR-joMcKFC5CjYvIn6Pkp2VRKrTJ13Pz4QhVDn-sCw95kPP5de8M5NKfQI5KpYa-EJOo-fCOZSLHYjsagjXzH3Uun-mXMYp8cwooNwk9bkQ6JBPgYDb7RrGJUvKSI6cej6Rh6TYrgVf8setO1iXOQ',
-            alt: 'Void Knit Sneakers'
-        }]
-    }
-];
-
 const Home = () => {
+    const dispatch = useDispatch();
     const { products, loading, handleGetProducts } = useProduct();
     const { user, isAuthenticated } = useSelector(state => state.auth || {});
+    const cartItems = useSelector(state => state.cart?.items || []);
+    const cartCount = cartItems.length;
     const [activeCategory, setActiveCategory] = useState('View All');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
-    const [cartCount, setCartCount] = useState(0);
     const [toastMessage, setToastMessage] = useState(null);
 
     useEffect(() => {
         handleGetProducts();
     }, []);
 
-    // Combine database products with fallback featured products if empty
+    // Use products from the database
     const displayProducts = useMemo(() => {
-        const list = (products && products.length > 0) ? products : CURATED_FEATURED_PRODUCTS;
+        const list = products || [];
         
         return list.filter((product) => {
             const matchesSearch =
@@ -130,7 +81,7 @@ const Home = () => {
 
     const handleAddToCart = (product, e) => {
         if (e) e.stopPropagation();
-        setCartCount(prev => prev + 1);
+        dispatch(addToCart({ product, quantity: 1, size: 'M', color: 'Black' }));
         setToastMessage(`Added "${product.title}" to bag`);
         setTimeout(() => setToastMessage(null), 2500);
     };
@@ -148,18 +99,9 @@ const Home = () => {
 
             {/* ═══════════════════════ NAVIGATION ═══════════════════════ */}
             <header className="bg-white/95 backdrop-blur-md border-b border-zinc-100 sticky top-0 z-40 w-full transition-all duration-300">
-                <div className="flex justify-between items-center px-6 sm:px-8 h-20 w-full max-w-[1440px] mx-auto relative">
+                <div className="flex justify-between items-center px-4 sm:px-6 h-14 sm:h-16 w-full max-w-[1440px] mx-auto relative">
                     {/* Left Nav Links */}
-                    <nav className="hidden md:flex items-center gap-8">
-                        <a href="#shop" className="text-zinc-500 font-medium hover:text-zinc-900 transition-colors duration-200 uppercase text-[12px] font-semibold tracking-[0.04em]">
-                            New Arrivals
-                        </a>
-                        <a href="#shop" className="text-zinc-900 font-bold border-b-2 border-zinc-900 pb-1 uppercase text-[12px] tracking-[0.04em]">
-                            Shop
-                        </a>
-                        <a href="#shop" className="text-zinc-500 font-medium hover:text-zinc-900 transition-colors duration-200 uppercase text-[12px] font-semibold tracking-[0.04em]">
-                            Collections
-                        </a>
+                    <nav className="hidden md:flex items-center gap-6">
                         {user?.role === 'seller' && (
                             <Link to="/seller/products" className="text-zinc-900 font-semibold hover:text-black transition-colors duration-200 uppercase text-[12px] tracking-[0.04em] flex items-center gap-1">
                                 <Sparkles className="w-3.5 h-3.5 text-zinc-800" />
@@ -194,7 +136,7 @@ const Home = () => {
                         {/* Account */}
                         {isAuthenticated ? (
                             <Link
-                                to={user?.role === 'seller' ? '/seller/products' : '/login'}
+                                to="/profile"
                                 className="p-2 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors"
                                 title={user?.fullName || "Account"}
                             >
@@ -207,13 +149,10 @@ const Home = () => {
                         )}
 
                         {/* Cart */}
-                        <button
+                        <Link
+                            to="/cart"
                             aria-label="Shopping Bag"
-                            onClick={() => {
-                                setToastMessage(`Your shopping bag has ${cartCount} items.`);
-                                setTimeout(() => setToastMessage(null), 2000);
-                            }}
-                            className="p-2 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors relative cursor-pointer"
+                            className="p-2 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors relative"
                         >
                             <ShoppingBag className="w-5 h-5" />
                             {cartCount > 0 && (
@@ -221,7 +160,7 @@ const Home = () => {
                                     {cartCount}
                                 </span>
                             )}
-                        </button>
+                        </Link>
                     </div>
                 </div>
 
@@ -254,54 +193,17 @@ const Home = () => {
             {/* ═══════════════════════ MAIN CONTENT ═══════════════════════ */}
             <main className="flex-grow flex flex-col w-full">
 
-                {/* ────────── HERO SECTION ────────── */}
-                <section className="w-full relative min-h-[500px] sm:min-h-[600px] lg:min-h-[720px] flex items-center justify-center overflow-hidden bg-zinc-100">
-                    <div className="absolute inset-0 z-0">
-                        <img
-                            alt="Snitch Autumn/Winter Collection"
-                            className="w-full h-full object-cover object-center"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4DOVe2CyjdIG7PE5w1CbsKnCc5GgtDFkMDTOvanmPk6lNeWOSqz5MFHOzTPJWBUiSXo-crRiXy8g45_aLYWu2bswuO7ww7iavHyVQdWpMIjRMxVs85zAPGxzglDlAyFIrij-Xqwfi9rM_dVX8kKkvFuROibGLqJw-iLC2nn5VVKbpmlo6v2Wx7Urmyf23FmF8L2rNl2CZKI2BTK1YIHe9f0rqteP8G6m09xknDIVWqn56sP9S3kXIvF6DPwKyJknvceMym2BfYsQ"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/20" />
-                    </div>
 
-                    <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto text-white">
-                        <span className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.25em] text-white mb-6 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/30">
-                            FW '24 COLLECTION
-                        </span>
-                        <h2 className="font-heading font-black text-[38px] sm:text-[56px] lg:text-[72px] leading-[1.05] text-white uppercase tracking-tight mb-6">
-                            Autumn / Winter<br />Collection
-                        </h2>
-                        <p className="text-[15px] sm:text-[18px] text-zinc-200 font-normal max-w-xl mx-auto mb-10 leading-relaxed">
-                            Define your narrative with precision-crafted streetwear designed for the modern landscape.
-                        </p>
-                        <a
-                            href="#shop"
-                            className="editorial-black-pill px-8 sm:px-10 py-3.5 sm:py-4 text-[13px] sm:text-[14px] uppercase tracking-wider inline-flex items-center gap-2 bg-white text-zinc-900 hover:bg-zinc-100 shadow-2xl transition-all transform hover:scale-105"
-                            style={{ backgroundColor: '#ffffff', color: '#18181b' }}
-                        >
-                            <span>Shop The Drop</span>
-                            <ArrowRight className="w-4 h-4" />
-                        </a>
-                    </div>
 
-                    {/* Season Floating Badge */}
-                    <div className="absolute bottom-6 right-6 sm:bottom-10 sm:right-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-zinc-100 hidden sm:flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-zinc-900 animate-ping" />
-                        <span className="text-[11px] font-bold tracking-widest uppercase text-zinc-900">
-                            Autumn / Winter Collection
-                        </span>
-                    </div>
-                </section>
 
                 {/* ────────── CATEGORY NAVIGATION ────────── */}
-                <section className="w-full max-w-[1440px] mx-auto px-6 sm:px-8 py-8 sm:py-12 mt-2 sm:mt-6">
-                    <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4">
+                <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-3 sm:py-4 mt-1">
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
                         {CATEGORIES.map((cat) => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-5 sm:px-6 py-2.5 rounded-full border font-semibold text-[12px] uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                                className={`px-4 sm:px-5 py-2 rounded-full border font-semibold text-[11px] uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                                     activeCategory === cat
                                         ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm'
                                         : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
@@ -314,21 +216,10 @@ const Home = () => {
                 </section>
 
                 {/* ────────── PRODUCT GRID ────────── */}
-                <section className="w-full max-w-[1440px] mx-auto px-6 sm:px-8 py-4 sm:py-12 mb-16 sm:mb-24" id="shop">
+                <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-2 sm:py-4 mb-8 sm:mb-12" id="shop">
                     {/* Section Header */}
-                    <div className="flex items-end justify-between mb-8 sm:mb-12 border-b border-zinc-100 pb-4">
-                        <div>
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 block mb-1">
-                                S N I T C H • CURATED
-                            </span>
-                            <h2 className="font-heading text-[24px] sm:text-[32px] font-bold text-zinc-900 uppercase tracking-tight">
-                                {activeCategory === 'View All' ? 'Trending Now' : activeCategory}
-                            </h2>
-                        </div>
-                        <span className="text-[12px] font-semibold text-zinc-400 uppercase tracking-wider">
-                            {displayProducts.length} {displayProducts.length === 1 ? 'Item' : 'Items'}
-                        </span>
-                    </div>
+
+
 
                     {/* Loading State */}
                     {loading && (
@@ -360,7 +251,7 @@ const Home = () => {
 
                     {/* Product Cards Grid (4 columns desktop, 2 columns mobile) */}
                     {!loading && displayProducts.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                             {displayProducts.map((product, index) => {
                                 const imgUrl = getProductImage(product);
                                 const tag = product.tag || (index === 0 ? 'New' : index === 2 ? 'Bestseller' : null);
@@ -369,11 +260,11 @@ const Home = () => {
                                     <Link
                                         key={product._id || index}
                                         to={`/product/${product._id}`}
-                                        className="group bg-white rounded-[28px] overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 border border-zinc-200/60 flex flex-col h-full cursor-pointer animate-fade-in block"
+                                        className="group bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 border border-zinc-200/60 flex flex-col h-full cursor-pointer animate-fade-in block"
                                         style={{ animationDelay: `${index * 60}ms` }}
                                     >
                                         {/* Image Container */}
-                                        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 rounded-t-[27px]">
+                                        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 rounded-t-[15px]">
                                             {imgUrl ? (
                                                 <img
                                                     alt={product.title}
@@ -415,24 +306,24 @@ const Home = () => {
                                         </div>
 
                                         {/* Product Info */}
-                                        <div className="p-4 sm:p-6 flex flex-col flex-grow justify-between">
+                                        <div className="p-3 sm:p-4 flex flex-col flex-grow justify-between">
                                             <div>
                                                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                                                     <span>S N I T C H</span>
                                                     <span>{product.category || 'Apparel'}</span>
                                                 </div>
-                                                <h3 className="font-heading text-[14px] sm:text-[17px] font-bold text-zinc-900 mb-1 sm:mb-1.5 leading-snug line-clamp-1 group-hover:text-zinc-700 transition-colors">
+                                                <h3 className="font-heading text-[13px] sm:text-[15px] font-bold text-zinc-900 mb-0.5 sm:mb-1 leading-snug line-clamp-1 group-hover:text-zinc-700 transition-colors">
                                                     {product.title}
                                                 </h3>
                                                 {product.description && (
-                                                    <p className="text-[11px] sm:text-[12px] text-zinc-500 line-clamp-2 leading-relaxed mb-3">
+                                                    <p className="text-[10px] sm:text-[11px] text-zinc-500 line-clamp-1 leading-relaxed mb-1.5">
                                                         {product.description}
                                                     </p>
                                                 )}
                                             </div>
 
-                                            <div className="pt-2 sm:pt-3 border-t border-zinc-100 flex items-center justify-between">
-                                                <p className="font-heading text-[15px] sm:text-[17px] font-bold text-zinc-900">
+                                            <div className="pt-1.5 sm:pt-2 border-t border-zinc-100 flex items-center justify-between">
+                                                <p className="font-heading text-[13px] sm:text-[15px] font-bold text-zinc-900">
                                                     {formatPrice(product.price)}
                                                 </p>
                                                 <span className="text-[11px] font-semibold text-zinc-400 group-hover:text-zinc-900 flex items-center gap-0.5 transition-colors">

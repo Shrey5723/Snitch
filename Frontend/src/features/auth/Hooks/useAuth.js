@@ -7,7 +7,7 @@ import {
   clearAuthMessages,
   logout,
 } from '../state/auth.slice.js';
-import { registerUser, loginUser, logoutUser, getMe } from '../services/auth.api.js';
+import { registerUser, loginUser, logoutUser, getMe, updateProfile } from '../services/auth.api.js';
 
 export const useAuth = () => {
   const dispatch = useDispatch();
@@ -75,6 +75,22 @@ export const useAuth = () => {
     }
   }
 
+  async function handleUpdateProfile({ fullName, contactNumber, addresses }) {
+    dispatch(setLoading(true));
+    dispatch(clearAuthMessages());
+    try {
+      const data = await updateProfile({ fullName, contactNumber, addresses });
+      dispatch(setUser({ user: data.user }));
+      dispatch(setSuccessMessage(data.message || 'Profile updated successfully'));
+      return { success: true, data };
+    } catch (err) {
+      dispatch(setError(err.message));
+      return { success: false, error: err.message };
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }
+
   return {
     user,
     isAuthenticated,
@@ -85,6 +101,7 @@ export const useAuth = () => {
     handleLogin,
     handleLogout,
     handleGetMe,
+    handleUpdateProfile,
     clearMessages: () => dispatch(clearAuthMessages()),
   };
 };

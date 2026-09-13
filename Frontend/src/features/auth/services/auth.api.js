@@ -59,10 +59,28 @@ export async function getMe() {
   }
 }
 
+export async function updateProfile({ fullName, contactNumber, addresses }) {
+  try {
+    const response = await authApiInstance.put('/update-profile', {
+      fullName,
+      contactNumber,
+      addresses,
+    });
+    return response.data;
+  } catch (error) {
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      'Failed to update profile';
+    throw new Error(message);
+  }
+}
+
 export default {
   registerUser,
   loginUser,
   logoutUser,
   getMe,
+  updateProfile,
   authApiInstance,
 };

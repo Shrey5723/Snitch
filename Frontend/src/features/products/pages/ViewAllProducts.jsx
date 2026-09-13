@@ -24,8 +24,7 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
-  Share2,
-  Filter
+  Share2,Filter
 } from 'lucide-react';
 import useProduct from '../Hooks/useProduct.js';
 
@@ -605,10 +604,14 @@ export default function ViewAllProducts() {
                         </span>
                       </div>
 
-                      <div className="px-3 py-1.5 rounded-full bg-zinc-100 group-hover:bg-zinc-900 group-hover:text-white text-zinc-700 text-xs font-bold transition-colors flex items-center gap-1">
-                        <span>View</span>
+                      <Link
+                        to={`/seller/product/${product._id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-900 hover:text-white text-zinc-800 text-xs font-bold transition-all flex items-center gap-1 shadow-xs"
+                      >
+                        <span>Manage</span>
                         <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
+                      </Link>
                     </div>
 
                   </div>
@@ -686,18 +689,14 @@ export default function ViewAllProducts() {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedProductForModal(product);
-                        setActiveModalImageIndex(0);
-                      }}
+                    <Link
+                      to={`/seller/product/${product._id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="editorial-black-pill px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Details</span>
-                    </button>
+                      <Package className="w-3.5 h-3.5" />
+                      <span>Manage Stock</span>
+                    </Link>
                   </div>
 
                 </div>
@@ -827,22 +826,33 @@ export default function ViewAllProducts() {
                 </div>
 
                 {/* Modal Footer Actions */}
-                <div className="pt-4 border-t border-zinc-100 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={(e) => handleShareProduct(selectedProductForModal, e)}
-                    className="editorial-secondary-pill flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                <div className="pt-4 border-t border-zinc-100 flex flex-col sm:flex-row items-center gap-2.5">
+                  <Link
+                    to={`/seller/product/${selectedProductForModal._id}`}
+                    className="editorial-black-pill w-full sm:flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>Share Drop</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProductForModal(null)}
-                    className="editorial-black-pill flex-1 py-2.5 text-xs font-bold flex items-center justify-center cursor-pointer"
-                  >
-                    Done
-                  </button>
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Manage Stock &amp; Details</span>
+                  </Link>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => handleShareProduct(selectedProductForModal, e)}
+                      className="editorial-secondary-pill flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Share link"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProductForModal(null)}
+                      className="editorial-secondary-pill px-4 py-2.5 text-xs font-bold cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
 
               </div>

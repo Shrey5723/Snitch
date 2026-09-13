@@ -165,15 +165,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row items-center justify-between relative overflow-hidden select-none">
+    <div className="h-dvh bg-white flex flex-col lg:flex-row items-center justify-between relative overflow-hidden select-none">
       
       {/* LEFT COLUMN: Clean Editorial Register Card */}
-      <div className="w-full lg:w-[55%] flex flex-col items-center justify-center p-4 sm:p-8 lg:p-12 z-10 my-4 sm:my-8">
+      <div className="w-full lg:w-[55%] flex-1 flex flex-col items-center justify-center p-3 sm:p-5 lg:p-8 z-10 overflow-hidden">
         
         {/* Brand Header: S N I T C H */}
-        <div className="mb-5 text-center">
+        <div className="mb-2 sm:mb-3 text-center">
           <Link to="/" className="inline-block group">
-            <h1 className="font-heading font-black text-3xl sm:text-4xl tracking-[0.35em] text-zinc-900 uppercase">
+            <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-[0.35em] text-zinc-900 uppercase">
               S N I T C H
             </h1>
             <p className="text-[10px] sm:text-xs font-semibold tracking-[0.25em] text-zinc-400 uppercase mt-1">
@@ -183,12 +183,12 @@ export default function Register() {
         </div>
 
         {/* Elevated Floating White Card */}
-        <div className="editorial-card w-full max-w-[420px] sm:max-w-[460px] p-6 sm:p-9 animate-fade-in">
+        <div className="editorial-card w-full max-w-[420px] sm:max-w-[460px] p-4 sm:p-5 lg:p-6 animate-fade-in">
           
           {/* Status / Alert Messages */}
           {(error || localSuccess || successMessage) && (
             <div
-              className={`mb-4 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-medium border transition-all ${
+              className={`mb-3 p-2.5 rounded-2xl flex items-center gap-2 text-[11px] font-medium border transition-all ${
                 localSuccess || successMessage
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : 'bg-rose-50 text-rose-800 border-rose-200'
@@ -204,7 +204,7 @@ export default function Register() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
             
             {/* 1. Full Name Underline Input */}
             <div>
@@ -315,16 +315,16 @@ export default function Register() {
             </div>
 
             {/* 5. Seller Mode Switch (Snitch Merchant) */}
-            <div className="pt-2">
-              <div className={`p-3 rounded-2xl border transition-all ${
+            <div className="pt-1">
+              <div className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
                 formData.isSeller ? 'bg-zinc-900 text-white border-zinc-900 shadow-md' : 'bg-zinc-50 border-zinc-200/70'
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className={`p-1.5 rounded-lg ${
+                    <div className={`p-1 rounded-lg ${
                       formData.isSeller ? 'bg-white text-zinc-900' : 'bg-zinc-200 text-zinc-700'
                     }`}>
-                      <Store className="w-3.5 h-3.5" />
+                      <Store className="w-3 h-3" />
                     </div>
                     <div>
                       <p className="text-xs font-bold leading-tight">Become a Seller</p>
@@ -349,7 +349,7 @@ export default function Register() {
             </div>
 
             {/* Terms Checkbox */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2">
               <input
                 id="agreeTerms"
                 type="checkbox"
@@ -360,7 +360,7 @@ export default function Register() {
               />
               <label 
                 htmlFor="agreeTerms"
-                className="text-xs text-zinc-600 cursor-pointer select-none"
+                className="text-[11px] text-zinc-600 cursor-pointer select-none"
               >
                 I agree to the <span className="font-semibold text-zinc-900">Terms of Service</span> & <span className="font-semibold text-zinc-900">Privacy</span>
               </label>
@@ -370,11 +370,11 @@ export default function Register() {
             )}
 
             {/* Primary Action Button: Sign Up (Matching Reference Photo) */}
-            <div className="flex justify-center pt-3">
+            <div className="flex justify-center pt-1.5">
               <button
                 type="submit"
                 disabled={loading}
-                className="editorial-black-pill px-10 py-2.5 min-w-[140px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                className="editorial-black-pill px-10 py-2 min-w-[140px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
               >
                 {loading ? (
                   <>
@@ -401,7 +401,7 @@ export default function Register() {
             </div>
 
             {/* Divider */}
-            <div className="relative my-3 flex items-center justify-center">
+            <div className="relative my-1.5 flex items-center justify-center">
               <div className="border-t border-zinc-100 w-full"></div>
               <span className="bg-white px-3 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                 or
@@ -413,7 +413,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="editorial-google-pill w-full py-2.5 px-4 flex items-center justify-center gap-2.5 cursor-pointer"
+                className="editorial-google-pill w-full py-2 px-4 flex items-center justify-center gap-2.5 cursor-pointer"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                   <path
@@ -440,14 +440,14 @@ export default function Register() {
         </div>
 
         {/* Brand Security Seal */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+        <div className="mt-2 sm:mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
           <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
           <span>Snitch Apparel • Official Member Registration</span>
         </div>
       </div>
 
       {/* RIGHT COLUMN: High-Fashion Studio Male Model Portrait */}
-      <div className="hidden lg:flex lg:w-[45%] h-screen relative items-center justify-end overflow-hidden select-none bg-white">
+      <div className="hidden lg:flex lg:w-[45%] h-dvh relative items-center justify-end overflow-hidden select-none bg-white">
         <div className="relative w-full h-full flex items-center justify-center">
           <img
             src="/assets/snitch_model_male.jpg"

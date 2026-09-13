@@ -118,10 +118,55 @@ export const getMe = async (req, res) => {
                 role: req.user.role,
                 isSeller: req.user.role === 'seller',
                 avatar: req.user.avatar,
+                addresses: req.user.addresses || [],
+                createdAt: req.user.createdAt,
             }
         });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving user', error: error.message });
+    }
+};
+
+export const updateProfile = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authenticated' });
+        }
+
+        const { fullName, contactNumber, addresses } = req.body;
+        const updates = {};
+
+        if (fullName !== undefined) updates.fullName = fullName.trim();
+        if (contactNumber !== undefined) updates.contactNumber = contactNumber.trim();
+        if (addresses !== undefined) updates.addresses = addresses;
+
+        const updatedUser = await userModel.findByIdAndUpdate(
+            req.user._id,
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                id: updatedUser._id,
+                email: updatedUser.email,
+                contactNumber: updatedUser.contactNumber,
+                fullName: updatedUser.fullName,
+                role: updatedUser.role,
+                isSeller: updatedUser.role === 'seller',
+                avatar: updatedUser.avatar,
+                addresses: updatedUser.addresses || [],
+                createdAt: updatedUser.createdAt,
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating profile', error: error.message });
     }
 };
 

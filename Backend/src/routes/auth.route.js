@@ -7,6 +7,7 @@ import {
     loginUser, 
     logoutUser, 
     getMe, 
+    updateProfile,
     googleCallback 
 } from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
@@ -17,6 +18,7 @@ router.post('/register', validateRegister, registerUser);
 router.post('/login', validateLogin, loginUser);
 router.post('/logout', logoutUser);
 router.get('/get-me',protect, getMe);
+router.put('/update-profile', protect, updateProfile);
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 

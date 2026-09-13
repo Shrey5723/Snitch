@@ -4,6 +4,7 @@ import {
   getSellerProducts as getSellerProductsApi,
   getAllProducts as getAllProductsApi,
   getProductById as getProductByIdApi,
+  updateProduct as updateProductApi,
 } from '../services/product.api.js';
 import {
   setProducts,
@@ -38,6 +39,30 @@ export const useProduct = () => {
         err.response?.data?.errors?.[0]?.msg ||
         err.message ||
         'Failed to create product';
+      dispatch(setError(msg));
+      dispatch(setLoading(false));
+      return { success: false, error: msg };
+    }
+  };
+
+  const handleUpdateProduct = async (productId, updateData) => {
+    dispatch(setLoading(true));
+    dispatch(clearProductMessages());
+    try {
+      const data = await updateProductApi(productId, updateData);
+      if (data.product) {
+        dispatch(setCurrentProduct(data.product));
+      }
+      const msg = data.message || 'Product & inventory updated successfully!';
+      dispatch(setSuccessMessage(msg));
+      dispatch(setLoading(false));
+      return { success: true, data: data.product, message: msg };
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.[0]?.msg ||
+        err.message ||
+        'Failed to update product';
       dispatch(setError(msg));
       dispatch(setLoading(false));
       return { success: false, error: msg };
@@ -104,6 +129,7 @@ export const useProduct = () => {
 
   return {
     handleCreateProduct,
+    handleUpdateProduct,
     handleGetProducts,
     handleGetProductById,
     handleGetSellerProducts,

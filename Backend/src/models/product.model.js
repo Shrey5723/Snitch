@@ -26,6 +26,27 @@ const productSchema = new mongoose.Schema({
             default: 'INR',
         },
     },
+    category: {
+        type: String,
+        default: 'Shirts',
+        trim: true,
+    },
+    stock: {
+        type: Number,
+        default: 50,
+    },
+    sizeStock: {
+        S: { type: Number, default: 10 },
+        M: { type: Number, default: 15 },
+        L: { type: Number, default: 12 },
+        XL: { type: Number, default: 8 },
+        XXL: { type: Number, default: 5 },
+    },
+    status: {
+        type: String,
+        enum: ['In Stock', 'Low Stock', 'Out of Stock', 'Archived'],
+        default: 'In Stock',
+    },
     images: [{
         url: {
             type: String,

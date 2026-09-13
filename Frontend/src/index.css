@@ -216,3 +216,20 @@
 .animate-fade-in {
   animation: fadeInSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Viewport-locked page container — NO scrolling */
+.page-viewport {
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar utility for inner overflow-y-auto areas */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -104,3 +104,60 @@ export const getProductById = async (req, res) => {
     }
 };
 
+export const updateProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { title, description, priceAmount, priceCurrency, category, stock, sizeStock, status } = req.body;
+
+        const product = await productModel.findById(productId);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        // Check if user is the seller who owns the product
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to modify this product',
+            });
+        }
+
+        if (title !== undefined) product.title = title;
+        if (description !== undefined) product.description = description;
+        if (category !== undefined) product.category = category;
+        if (status !== undefined) product.status = status;
+        if (stock !== undefined) product.stock = Number(stock);
+        if (sizeStock !== undefined) {
+            product.sizeStock = {
+                ...(product.sizeStock?.toObject ? product.sizeStock.toObject() : product.sizeStock),
+                ...sizeStock
+            };
+            const total = Object.values(product.sizeStock).reduce((acc, val) => acc + (Number(val) || 0), 0);
+            product.stock = total;
+        }
+        if (priceAmount !== undefined || priceCurrency !== undefined) {
+            product.price = {
+                amount: priceAmount !== undefined ? Number(priceAmount) : product.price.amount,
+                currency: priceCurrency || product.price.currency || 'INR',
+            };
+        }
+
+        await product.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Product & stock updated successfully',
+            product,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update product',
+            error: error.message,
+        });
+    }
+};
+

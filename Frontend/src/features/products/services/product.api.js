@@ -43,3 +43,16 @@ export async function getProductById(productId) {
         throw error;
     }
 }
+
+export async function updateProduct(productId, productData) {
+    try {
+        const response = await productApiInstance.put(`/${productId}`, productData, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
