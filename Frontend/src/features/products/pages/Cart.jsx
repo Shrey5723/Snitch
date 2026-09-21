@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   ShoppingBag,
   Trash2,
@@ -13,12 +13,23 @@ import {
   RotateCcw,
   Package,
   X,
+  Loader2,
+  AlertCircle,
+  Star,
+  Sparkles,
 } from 'lucide-react';
-import { removeFromCart, updateQuantity, clearCart, placeOrder, clearOrderMessage } from '../state/cart.slice.js';
+import {
+  updateCartItemThunk,
+  removeFromCartThunk,
+  clearCartThunk,
+  placeOrderThunk,
+  clearOrderMessage
+} from '../state/cart.slice.js';
 
 export default function Cart() {
   const dispatch = useDispatch();
-  const { items, orderPlaced, orderMessage } = useSelector((state) => state.cart);
+  const navigate = useNavigate();
+  const { items, orderPlaced, orderMessage, orderLoading } = useSelector((state) => state.cart);
   const { user, isAuthenticated } = useSelector((state) => state.auth || {});
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -47,16 +58,34 @@ export default function Cart() {
     return null;
   };
 
+  const getItemMaxStock = (item) => {
+    if (!item?.product) return 0;
+    if (item.product.sizeStock && item.product.sizeStock[item.size] !== undefined) {
+      return Number(item.product.sizeStock[item.size]) || 0;
+    }
+    return Number(item.product.stock) || 0;
+  };
+
+  const hasStockIssue = items.some((item) => {
+    const maxStock = getItemMaxStock(item);
+    return item.quantity > maxStock || maxStock <= 0;
+  });
+
   const subtotal = items.reduce((sum, item) => sum + getPrice(item.product?.price) * item.quantity, 0);
   const shipping = subtotal > 1999 ? 0 : 149;
   const total = subtotal + shipping;
 
   const handlePlaceOrder = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
+      setShowConfirm(false);
+      navigate('/login');
+      return;
+    }
+    if (hasStockIssue) {
       setShowConfirm(false);
       return;
     }
-    dispatch(placeOrder());
+    dispatch(placeOrderThunk({ shippingAddress: user?.addresses?.[0] || {} }));
     setShowConfirm(false);
   };
 
@@ -105,10 +134,18 @@ export default function Cart() {
               Order Confirmed!
             </h2>
             <p className="text-sm text-zinc-500 max-w-md mb-6">{orderMessage}</p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                to="/profile"
+                className="editorial-black-pill px-6 py-2.5 text-xs uppercase tracking-wider flex items-center gap-1.5"
+                onClick={() => dispatch(clearOrderMessage())}
+              >
+                <Star className="w-3.5 h-3.5 fill-white" />
+                <span>View Order &amp; Rate Items</span>
+              </Link>
               <Link
                 to="/"
-                className="editorial-black-pill px-6 py-2.5 text-xs uppercase tracking-wider"
+                className="editorial-secondary-pill px-6 py-2.5 text-xs font-bold uppercase tracking-wider"
                 onClick={() => dispatch(clearOrderMessage())}
               >
                 Continue Shopping
@@ -141,7 +178,7 @@ export default function Cart() {
                   Shopping Bag ({items.length})
                 </h2>
                 <button
-                  onClick={() => dispatch(clearCart())}
+                  onClick={() => dispatch(clearCartThunk())}
                   className="text-[10px] font-semibold text-zinc-400 hover:text-rose-500 uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   Clear All
@@ -186,8 +223,9 @@ export default function Cart() {
                             </div>
                             <button
                               onClick={() =>
-                                dispatch(removeFromCart({
-                                  productId: item.product._id,
+                                dispatch(removeFromCartThunk({
+                                  itemId: item._id,
+                                  productId: item.product?._id,
                                   size: item.size,
                                   color: item.color,
                                 }))
@@ -202,39 +240,77 @@ export default function Cart() {
                             <span className="text-zinc-300">•</span>
                             <span className="text-[10px] text-zinc-500 font-medium">{item.color}</span>
                           </div>
+                          {/* Stock status indicator */}
+                          {(() => {
+                            const maxStock = getItemMaxStock(item);
+                            if (maxStock <= 0) {
+                              return <p className="text-[10px] font-bold text-rose-600 mt-1">Out of Stock • Please remove</p>;
+                            }
+                            if (item.quantity > maxStock) {
+                              return (
+                                <p className="text-[10px] font-bold text-amber-600 mt-1">
+                                  Only {maxStock} available in size {item.size} • Please reduce quantity
+                                </p>
+                              );
+                            }
+                            if (maxStock <= 5) {
+                              return (
+                                <p className="text-[9px] font-semibold text-zinc-400 mt-0.5">
+                                  Only {maxStock} left in stock
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
 
                         <div className="flex items-center justify-between mt-1.5">
                           {/* Quantity */}
-                          <div className="flex items-center border border-zinc-200 rounded-full px-2 py-1 gap-2.5 bg-white">
-                            <button
-                              onClick={() =>
-                                dispatch(updateQuantity({
-                                  productId: item.product._id,
-                                  size: item.size,
-                                  color: item.color,
-                                  quantity: item.quantity - 1,
-                                }))
-                              }
-                              className="p-0.5 hover:bg-zinc-100 rounded-full cursor-pointer"
-                            >
-                              <Minus className="w-3 h-3 text-zinc-600" />
-                            </button>
-                            <span className="text-xs font-bold text-zinc-900 w-4 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() =>
-                                dispatch(updateQuantity({
-                                  productId: item.product._id,
-                                  size: item.size,
-                                  color: item.color,
-                                  quantity: item.quantity + 1,
-                                }))
-                              }
-                              className="p-0.5 hover:bg-zinc-100 rounded-full cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3 text-zinc-600" />
-                            </button>
-                          </div>
+                          {(() => {
+                            const maxStock = getItemMaxStock(item);
+                            const isMaxReached = item.quantity >= maxStock;
+
+                            return (
+                              <div className="flex items-center border border-zinc-200 rounded-full px-2 py-1 gap-2.5 bg-white">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    dispatch(updateCartItemThunk({
+                                      itemId: item._id,
+                                      productId: item.product?._id,
+                                      size: item.size,
+                                      color: item.color,
+                                      quantity: item.quantity - 1,
+                                    }))
+                                  }
+                                  className="p-0.5 hover:bg-zinc-100 rounded-full cursor-pointer"
+                                >
+                                  <Minus className="w-3 h-3 text-zinc-600" />
+                                </button>
+                                <span className="text-xs font-bold text-zinc-900 w-4 text-center">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  disabled={isMaxReached}
+                                  onClick={() => {
+                                    if (isMaxReached) return;
+                                    dispatch(updateCartItemThunk({
+                                      itemId: item._id,
+                                      productId: item.product?._id,
+                                      size: item.size,
+                                      color: item.color,
+                                      quantity: item.quantity + 1,
+                                    }));
+                                  }}
+                                  className={`p-0.5 rounded-full ${
+                                    isMaxReached ? 'opacity-30 cursor-not-allowed' : 'hover:bg-zinc-100 cursor-pointer'
+                                  }`}
+                                  title={isMaxReached ? `Maximum available stock (${maxStock}) reached` : 'Add one more'}
+                                >
+                                  <Plus className="w-3 h-3 text-zinc-600" />
+                                </button>
+                              </div>
+                            );
+                          })()}
 
                           {/* Price */}
                           <span className="font-heading font-bold text-sm text-zinc-900">
@@ -276,6 +352,19 @@ export default function Cart() {
                 </div>
               </div>
 
+              {/* Stock issue warning banner */}
+              {hasStockIssue && (
+                <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 animate-fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Stock Limit Exceeded</p>
+                    <p className="text-[11px] mt-0.5 text-rose-600">
+                      Some garments in your bag are out of stock or exceed current warehouse inventory. Please adjust quantities to proceed.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="mt-4 space-y-2">
                 {!isAuthenticated ? (
@@ -287,11 +376,16 @@ export default function Cart() {
                   </Link>
                 ) : (
                   <button
+                    disabled={hasStockIssue || items.length === 0}
                     onClick={() => setShowConfirm(true)}
-                    className="editorial-black-pill w-full py-3 text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg transition-all"
+                    className={`w-full py-3 text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 rounded-full font-bold transition-all ${
+                      hasStockIssue || items.length === 0
+                        ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed border border-zinc-200'
+                        : 'editorial-black-pill cursor-pointer shadow-md hover:shadow-lg'
+                    }`}
                   >
                     <Package className="w-3.5 h-3.5" />
-                    <span>Place Order</span>
+                    <span>{hasStockIssue ? 'Fix Stock Issues to Order' : 'Place Order'}</span>
                   </button>
                 )}
                 <Link
@@ -366,9 +460,17 @@ export default function Cart() {
               </button>
               <button
                 onClick={handlePlaceOrder}
-                className="editorial-black-pill flex-1 py-2.5 text-xs uppercase tracking-wider cursor-pointer"
+                disabled={orderLoading}
+                className="editorial-black-pill flex-1 py-2.5 text-xs uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                Confirm & Pay
+                {orderLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Placing...</span>
+                  </>
+                ) : (
+                  <span>Confirm & Pay</span>
+                )}
               </button>
             </div>
           </div>

@@ -95,7 +95,12 @@ export const loginUser = async (req, res) => {
 
 export const logoutUser = async (req, res) => {
     try {
-        res.clearCookie('token');
+        res.clearCookie('token', {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+        });
         res.status(200).json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error logging out', error: error.message });
@@ -108,8 +113,12 @@ export const getMe = async (req, res) => {
             return res.status(401).json({ message: 'Not authenticated' });
         }
 
+        const authHeader = req.headers.authorization?.replace('Bearer ', '')?.trim();
+        const token = authHeader || req.cookies?.token;
+
         res.status(200).json({
             success: true,
+            token,
             user: {
                 id: req.user._id,
                 email: req.user.email,

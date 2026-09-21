@@ -34,11 +34,24 @@ export const useProduct = () => {
       dispatch(setLoading(false));
       return { success: true, data: data.product, message: msg };
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.errors?.[0]?.msg ||
-        err.message ||
-        'Failed to create product';
+      const serverMsg = err.response?.data?.message;
+      const serverErr = err.response?.data?.error;
+      const validationErr = err.response?.data?.errors?.[0]?.msg;
+      let msg = 'Failed to create product';
+
+      if (serverMsg && serverErr && serverMsg !== serverErr) {
+        msg = `${serverMsg}: ${serverErr}`;
+      } else if (serverMsg) {
+        msg = serverMsg;
+      } else if (serverErr) {
+        msg = serverErr;
+      } else if (validationErr) {
+        msg = validationErr;
+      } else if (err.code === 'ECONNABORTED') {
+        msg = 'Image upload timed out. Please try uploading fewer or smaller images.';
+      } else if (err.message) {
+        msg = err.message;
+      }
       dispatch(setError(msg));
       dispatch(setLoading(false));
       return { success: false, error: msg };

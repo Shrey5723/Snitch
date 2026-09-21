@@ -1,10 +1,18 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const getSavedToken = () => {
+  try {
+    return localStorage.getItem('snitch_token') || null;
+  } catch {
+    return null;
+  }
+};
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    token: null,
+    token: getSavedToken(),
     isAuthenticated: false,
     loading: false,
     error: null,
@@ -13,7 +21,15 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action) => {
       state.user = action.payload?.user || action.payload;
-      state.token = action.payload?.token || state.token;
+      const newToken = action.payload?.token || state.token;
+      state.token = newToken;
+      if (action.payload?.token) {
+        try {
+          localStorage.setItem('snitch_token', action.payload.token);
+        } catch (e) {
+          console.warn('Could not persist token:', e);
+        }
+      }
       state.isAuthenticated = Boolean(action.payload);
       state.error = null;
     },
@@ -36,6 +52,11 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       state.successMessage = null;
+      try {
+        localStorage.removeItem('snitch_token');
+      } catch (e) {
+        console.warn('Could not remove token:', e);
+      }
     },
   },
 });

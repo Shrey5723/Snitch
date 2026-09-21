@@ -4,7 +4,8 @@ import { config } from '../config/config.js';
 
 export const protect = async (req, res, next) => {
     try {
-        const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+        const authHeader = req.headers.authorization?.replace('Bearer ', '')?.trim();
+        const token = authHeader || req.cookies?.token;
 
         if (!token) {
             return res.status(401).json({ message: 'Authentication required. Please log in.' });
@@ -27,7 +28,8 @@ export const protect = async (req, res, next) => {
 export const authorizeRole = (roles = []) => {
     return async (req, res, next) => {
         try {
-            const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+            const authHeader = req.headers.authorization?.replace('Bearer ', '')?.trim();
+            const token = authHeader || req.cookies?.token;
 
             if (!token) {
                 return res.status(401).json({ message: 'Authentication required. Please log in.' });
@@ -41,7 +43,13 @@ export const authorizeRole = (roles = []) => {
             }
 
             if (roles.length && !roles.includes(user.role)) {
-                return res.status(403).json({ message: `Access denied. Requires one of roles: [${roles.join(', ')}]` });
+                return res.status(403).json({ 
+                    message: `Access denied. Requires one of roles: [${roles.join(', ')}]. Currently signed in as '${user.email}' (role: '${user.role}'). Please sign in with an authorized account.`,
+                    currentUser: {
+                        email: user.email,
+                        role: user.role,
+                    }
+                });
             }
 
             req.user = user;

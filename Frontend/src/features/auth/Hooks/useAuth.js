@@ -65,8 +65,8 @@ export const useAuth = () => {
     dispatch(setLoading(true));
     try {
       const data = await getMe();
-      dispatch(setUser({ user: data.user }));
-      return { success: true, user: data.user };
+      dispatch(setUser({ user: data.user, token: data.token }));
+      return { success: true, user: data.user, token: data.token };
     } catch (err) {
       dispatch(setError(err.message));
       return { success: false, error: err.message };

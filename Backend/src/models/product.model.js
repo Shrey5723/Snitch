@@ -47,6 +47,20 @@ const productSchema = new mongoose.Schema({
         enum: ['In Stock', 'Low Stock', 'Out of Stock', 'Archived'],
         default: 'In Stock',
     },
+    colors: [{
+        type: String,
+        trim: true,
+    }],
+    type: {
+        type: String,
+        trim: true,
+        default: '',
+    },
+    buildSummary: {
+        type: String,
+        trim: true,
+        default: '',
+    },
     images: [{
         url: {
             type: String,
@@ -57,6 +71,38 @@ const productSchema = new mongoose.Schema({
             default: '',
         },
     }],
+    ratings: [{
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user',
+            required: true,
+        },
+        rating: {
+            type: Number,
+            required: true,
+            min: 0,
+            max: 5,
+        },
+        comment: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+        },
+    }],
+    avgRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5,
+    },
+    numReviews: {
+        type: Number,
+        default: 0,
+    },
 }, {
     timestamps: true,
 });

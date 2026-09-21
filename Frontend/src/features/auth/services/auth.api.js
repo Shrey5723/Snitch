@@ -5,6 +5,18 @@ export const authApiInstance = axios.create({
   withCredentials: true,
 });
 
+authApiInstance.interceptors.request.use((config) => {
+  try {
+    const token = localStorage.getItem('snitch_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return config;
+});
+
 export async function registerUser({ fullName, email, password, contactNumber, isSeller }) {
   try {
     const response = await authApiInstance.post('/register', {

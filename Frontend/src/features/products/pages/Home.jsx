@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from 'react-redux';
-import { addToCart } from '../state/cart.slice.js';
+import { addToCartThunk, toggleLikeThunk } from '../state/cart.slice.js';
 import { useProduct } from '../Hooks/useProduct';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
     Search,
     User,
@@ -16,16 +16,19 @@ import {
     CheckCircle2,
     Sparkles,
     Star,
-    Plus
+    Plus,
+    Heart
 } from 'lucide-react';
 
 const CATEGORIES = ['View All', 'Shirts', 'Jackets', 'Pants', 'Sneakers', 'Accessories'];
 
 const Home = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { products, loading, handleGetProducts } = useProduct();
     const { user, isAuthenticated } = useSelector(state => state.auth || {});
     const cartItems = useSelector(state => state.cart?.items || []);
+    const wishlist = useSelector(state => state.cart?.wishlist || []);
     const cartCount = cartItems.length;
     const [activeCategory, setActiveCategory] = useState('View All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -33,15 +36,26 @@ const Home = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [toastMessage, setToastMessage] = useState(null);
 
+    // If logged in as seller, automatically redirect to seller dashboard
+    useEffect(() => {
+        if (user?.role === 'seller') {
+            navigate('/seller/dashboard', { replace: true });
+        }
+    }, [user, navigate]);
+
     useEffect(() => {
         handleGetProducts();
     }, []);
 
-    // Use products from the database
+    // Filter to only in-stock products from MongoDB
     const displayProducts = useMemo(() => {
         const list = products || [];
         
         return list.filter((product) => {
+            // Must have stock > 0
+            const stock = typeof product.stock === 'number' ? product.stock : 0;
+            if (stock <= 0 || product.status === 'Out of Stock') return false;
+
             const matchesSearch =
                 (product.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (product.description || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -51,9 +65,7 @@ const Home = () => {
             if (activeCategory === 'View All') return true;
 
             const categoryMatch =
-                (product.category || '').toLowerCase() === activeCategory.toLowerCase() ||
-                (product.title || '').toLowerCase().includes(activeCategory.toLowerCase()) ||
-                (product.description || '').toLowerCase().includes(activeCategory.toLowerCase());
+                (product.category || '').toLowerCase() === activeCategory.toLowerCase();
 
             return categoryMatch;
         });
@@ -81,9 +93,22 @@ const Home = () => {
 
     const handleAddToCart = (product, e) => {
         if (e) e.stopPropagation();
-        dispatch(addToCart({ product, quantity: 1, size: 'M', color: 'Black' }));
+        if (!isAuthenticated || !user) {
+            navigate('/login');
+            return;
+        }
+        dispatch(addToCartThunk({ productId: product._id, quantity: 1, size: 'M', color: 'Black' }));
         setToastMessage(`Added "${product.title}" to bag`);
         setTimeout(() => setToastMessage(null), 2500);
+    };
+
+    const handleToggleLike = (product, e) => {
+        if (e) e.stopPropagation();
+        if (!isAuthenticated || !user) {
+            navigate('/login');
+            return;
+        }
+        dispatch(toggleLikeThunk(product._id));
     };
 
     return (
@@ -133,20 +158,28 @@ const Home = () => {
                             <Search className="w-5 h-5" />
                         </button>
 
-                        {/* Account */}
-                        {isAuthenticated ? (
-                            <Link
-                                to="/profile"
-                                className="p-2 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors"
-                                title={user?.fullName || "Account"}
-                            >
-                                <User className="w-5 h-5" />
-                            </Link>
-                        ) : (
-                            <Link to="/login" className="p-2 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors">
-                                <User className="w-5 h-5" />
-                            </Link>
-                        )}
+                        {/* Account / Profile Avatar */}
+                        <Link
+                            to="/profile"
+                            className="p-1 rounded-full hover:bg-zinc-100 text-zinc-800 hover:text-zinc-900 transition-colors flex items-center justify-center"
+                            title={isAuthenticated ? (user?.fullName || "My Profile") : "Sign In / Account"}
+                        >
+                            {isAuthenticated && user?.avatar ? (
+                                <img
+                                    src={user.avatar}
+                                    alt={user.fullName || "User avatar"}
+                                    className="w-7 h-7 rounded-full object-cover border border-zinc-300"
+                                />
+                            ) : isAuthenticated && user?.fullName ? (
+                                <div className="w-7 h-7 rounded-full bg-zinc-900 text-white font-bold text-xs flex items-center justify-center tracking-wider shadow-sm">
+                                    {user.fullName.charAt(0).toUpperCase()}
+                                </div>
+                            ) : (
+                                <div className="p-1">
+                                    <User className="w-5 h-5" />
+                                </div>
+                            )}
+                        </Link>
 
                         {/* Cart */}
                         <Link
@@ -289,6 +322,26 @@ const Home = () => {
                                                     </span>
                                                 </div>
                                             )}
+
+                                            {/* Like / Heart Button */}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleToggleLike(product, e);
+                                                }}
+                                                title={wishlist.includes(product._id) ? "Remove from wishlist" : "Save to wishlist"}
+                                                className="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow flex items-center justify-center transition-transform hover:scale-110 cursor-pointer z-10"
+                                            >
+                                                <Heart
+                                                    className={`w-4 h-4 transition-colors ${
+                                                        wishlist.includes(product._id)
+                                                            ? 'fill-rose-500 text-rose-500'
+                                                            : 'text-zinc-600 hover:text-rose-500'
+                                                    }`}
+                                                />
+                                            </button>
 
                                             {/* Quick Add Button */}
                                             <button

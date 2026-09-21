@@ -3,9 +3,19 @@ import axios from 'axios'
 const productApiInstance = axios.create({
     baseURL: '/api/products',
     withCredentials: true,
-    headers: {
-        'Content-Type': 'multipart/form-data',
+    timeout: 120000,
+});
+
+productApiInstance.interceptors.request.use((config) => {
+    try {
+        const token = localStorage.getItem('snitch_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+    } catch {
+        // localStorage unavailable
     }
+    return config;
 });
 
 export async function createProduct(formData) {
@@ -51,6 +61,15 @@ export async function updateProduct(productId, productData) {
                 'Content-Type': 'application/json',
             },
         });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function rateProduct(productId, { rating, comment }) {
+    try {
+        const response = await productApiInstance.post(`/${productId}/rate`, { rating, comment });
         return response.data;
     } catch (error) {
         throw error;

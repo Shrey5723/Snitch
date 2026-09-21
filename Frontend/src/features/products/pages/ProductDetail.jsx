@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import { useSelector, useDispatch } from 'react-redux';
-import { addToCart } from '../state/cart.slice.js';
+import { addToCartThunk, toggleLikeThunk } from '../state/cart.slice.js';
 import {
   ShoppingBag,
   Heart,
@@ -19,9 +19,12 @@ import {
   Loader2,
   X,
   Maximize2,
+  Sparkles,
+  AlertCircle,
   Image as ImageIcon
 } from 'lucide-react';
 import useProduct from '../Hooks/useProduct.js';
+import { rateProduct } from '../services/product.api.js';
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
@@ -38,17 +41,26 @@ export default function ProductDetail() {
   const { currentProduct, loading, handleGetProductById, products, handleGetProducts } = useProduct();
   const { user, isAuthenticated } = useSelector((state) => state.auth || {});
   const cartItems = useSelector((state) => state.cart?.items || []);
+  const orders = useSelector((state) => state.cart?.orders || []);
+  const wishlist = useSelector((state) => state.cart?.wishlist || []);
   const cartCount = cartItems.length;
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState('M');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const isWishlisted = wishlist.includes(productId);
 
   const [toastMessage, setToastMessage] = useState(null);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // Fetch product on load
   useEffect(() => {
@@ -67,7 +79,66 @@ export default function ProductDetail() {
     return currentProduct || null;
   }, [productId, currentProduct]);
 
+  // Verified buyer check: has the current user purchased this product?
+  const hasPurchased = useMemo(() => {
+    if (!isAuthenticated || !user || user.role !== 'buyer') return false;
+    return orders.some((order) =>
+      order.items?.some((item) => {
+        const pId = item.product?._id || item.product;
+        return pId?.toString() === productId?.toString();
+      })
+    );
+  }, [orders, isAuthenticated, user, productId]);
 
+  // Check if current user has already rated this product
+  const userExistingRating = useMemo(() => {
+    if (!user?._id || !product?.ratings) return null;
+    return product.ratings.find(
+      (r) => (r.user?._id || r.user)?.toString() === user._id.toString()
+    );
+  }, [user, product]);
+
+  useEffect(() => {
+    if (userExistingRating) {
+      setRatingScore(userExistingRating.rating ?? 5);
+      setRatingComment(userExistingRating.comment || '');
+    }
+  }, [userExistingRating]);
+
+  // Calculate live available stock for selected size
+  const colorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+
+  const selectedSizeStock = useMemo(() => {
+    if (!product) return 0;
+    if (product.sizeStock && product.sizeStock[selectedSize] !== undefined) {
+      return Number(product.sizeStock[selectedSize]) || 0;
+    }
+    return Number(product.stock) || 0;
+  }, [product, selectedSize]);
+
+  // Units of this product/size already in buyer's bag
+  const inCartQty = useMemo(() => {
+    const found = cartItems.find((item) => {
+      const pId = item.product?._id || item.product;
+      return (
+        pId?.toString() === productId?.toString() &&
+        item.size === selectedSize &&
+        item.color === colorName
+      );
+    });
+    return found ? found.quantity : 0;
+  }, [cartItems, productId, selectedSize, colorName]);
+
+  const maxAddable = Math.max(0, selectedSizeStock - inCartQty);
+
+  // Auto-clamp selected quantity if stock changes
+  useEffect(() => {
+    if (maxAddable > 0 && quantity > maxAddable) {
+      setQuantity(maxAddable);
+    } else if (maxAddable === 0) {
+      setQuantity(1);
+    }
+  }, [maxAddable]);
 
   const formatPrice = (price) => {
     if (!price) return '₹0';
@@ -92,9 +163,55 @@ export default function ProductDetail() {
   }, [product]);
 
   const handleAddToCart = () => {
-    dispatch(addToCart({ product, quantity, size: selectedSize, color: selectedColor.name }));
-    setToastMessage(`Added ${quantity} × ${product.title} (Size ${selectedSize}) to bag`);
+    if (!isAuthenticated || !user) {
+      navigate('/login');
+      return;
+    }
+    if (selectedSizeStock <= 0) {
+      setToastMessage(`Size ${selectedSize} is currently out of stock`);
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    if (maxAddable <= 0) {
+      setToastMessage(`Maximum available stock (${selectedSizeStock}) is already in your bag`);
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    const qtyToAdd = Math.min(quantity, maxAddable);
+    dispatch(addToCartThunk({ productId, quantity: qtyToAdd, size: selectedSize, color: colorName || 'Black' }));
+    setToastMessage(`Added ${qtyToAdd} × ${product.title} (Size ${selectedSize}) to bag`);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleSubmitRating = async (e) => {
+    if (e) e.preventDefault();
+    if (!hasPurchased) {
+      setToastMessage('Only verified buyers who purchased this product can rate it');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    try {
+      setIsSubmittingRating(true);
+      const res = await rateProduct(productId, { rating: ratingScore, comment: ratingComment });
+      if (res.success) {
+        setToastMessage(res.message || 'Rating submitted successfully');
+        setShowRatingModal(false);
+        handleGetProductById(productId);
+      }
+    } catch (err) {
+      setToastMessage(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setIsSubmittingRating(false);
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
+  const handleToggleWishlist = () => {
+    if (!isAuthenticated || !user) {
+      navigate('/login');
+      return;
+    }
+    dispatch(toggleLikeThunk(productId));
   };
 
   const handleShare = () => {
@@ -162,7 +279,7 @@ export default function ProductDetail() {
             </button>
 
             <button
-              onClick={() => setIsWishlisted(!isWishlisted)}
+              onClick={handleToggleWishlist}
               title={isWishlisted ? 'Saved in wishlist' : 'Save to wishlist'}
               className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-800 transition-colors cursor-pointer"
             >
@@ -358,15 +475,43 @@ export default function ProductDetail() {
                     Tax Included
                   </span>
                 </div>
-                <div className="flex items-center gap-1 bg-zinc-50 border border-zinc-200/80 px-2 py-0.5 rounded-full">
-                  <div className="flex text-amber-400">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <span className="text-[10px] font-bold text-zinc-800">4.9</span>
-                  <span className="text-[9px] text-zinc-400 font-medium">(128)</span>
-                </div>
+                {/* Genuine MongoDB Rating */}
+                {product?.numReviews > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => hasPurchased && setShowRatingModal(true)}
+                    className={`flex items-center gap-1.5 bg-zinc-50 border border-zinc-200/80 px-2.5 py-1 rounded-full ${hasPurchased ? 'cursor-pointer hover:bg-zinc-100 transition-colors' : ''}`}
+                    title={hasPurchased ? 'Click to rate this item' : 'Verified customer ratings'}
+                  >
+                    <div className="flex text-amber-400">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-2.5 h-2.5 ${s <= Math.round(product.avgRating || 0) ? 'fill-amber-400 text-amber-400' : 'text-zinc-200'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-bold text-zinc-900">
+                      {Number(product.avgRating || 0).toFixed(1)}
+                    </span>
+                    <span className="text-[9px] text-zinc-400 font-medium">
+                      ({product.numReviews} {product.numReviews === 1 ? 'rating' : 'ratings'})
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => hasPurchased && setShowRatingModal(true)}
+                    className={`flex items-center gap-1.5 bg-zinc-50 border border-zinc-200/80 px-2.5 py-1 rounded-full ${hasPurchased ? 'cursor-pointer hover:bg-zinc-100 transition-colors' : ''}`}
+                  >
+                    <div className="flex text-zinc-300">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className="w-2.5 h-2.5 text-zinc-300" />
+                      ))}
+                    </div>
+                    <span className="text-[9px] text-zinc-400 font-medium">No ratings yet</span>
+                  </button>
+                )}
               </div>
 
               {/* Short Description */}
@@ -417,20 +562,55 @@ export default function ProductDetail() {
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {SIZES.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setSelectedSize(size)}
-                      className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        selectedSize === size
-                          ? 'bg-zinc-900 text-white shadow-xs'
-                          : 'bg-white border border-zinc-200 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {SIZES.map((size) => {
+                    const szStock = product?.sizeStock && product?.sizeStock[size] !== undefined
+                      ? Number(product.sizeStock[size])
+                      : Number(product?.stock || 0);
+                    const isSoldOut = szStock <= 0;
+
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setSelectedSize(size)}
+                        className={`relative px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          selectedSize === size
+                            ? isSoldOut
+                              ? 'bg-zinc-800 text-white line-through opacity-80'
+                              : 'bg-zinc-900 text-white shadow-xs'
+                            : isSoldOut
+                            ? 'bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200 line-through opacity-60 hover:opacity-100'
+                            : 'bg-white border border-zinc-200 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
+                        }`}
+                        title={isSoldOut ? `${size} - Out of Stock` : `${size} - ${szStock} in stock`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Stock status hint */}
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mt-1.5">
+                  {selectedSizeStock <= 0 ? (
+                    <span className="text-rose-600 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                      Out of Stock in size {selectedSize}
+                    </span>
+                  ) : selectedSizeStock <= 5 ? (
+                    <span className="text-amber-600 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      Only {selectedSizeStock} left in size {selectedSize}!
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      In Stock ({selectedSizeStock} available in size {selectedSize})
+                    </span>
+                  )}
+                  {inCartQty > 0 && selectedSizeStock > 0 && (
+                    <span className="text-zinc-400 font-normal">({inCartQty} already in bag)</span>
+                  )}
                 </div>
               </div>
 
@@ -438,19 +618,23 @@ export default function ProductDetail() {
               <div className="space-y-1.5 pt-0.5">
                 <div className="flex gap-2">
                   {/* Quantity */}
-                  <div className="flex items-center border border-zinc-200/90 rounded-full px-2.5 py-1.5 w-24 sm:w-28 justify-between bg-zinc-50/60 flex-shrink-0">
+                  <div className={`flex items-center border border-zinc-200/90 rounded-full px-2.5 py-1.5 w-24 sm:w-28 justify-between bg-zinc-50/60 flex-shrink-0 ${
+                    maxAddable <= 0 ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}>
                     <button
                       type="button"
+                      disabled={quantity <= 1 || maxAddable <= 0}
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      className="p-0.5 rounded-full hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                      className="p-0.5 rounded-full hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="font-bold text-xs text-zinc-900">{quantity}</span>
+                    <span className="font-bold text-xs text-zinc-900">{maxAddable > 0 ? quantity : 0}</span>
                     <button
                       type="button"
-                      onClick={() => setQuantity((q) => q + 1)}
-                      className="p-0.5 rounded-full hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                      disabled={quantity >= maxAddable || maxAddable <= 0}
+                      onClick={() => setQuantity((q) => Math.min(maxAddable, q + 1))}
+                      className="p-0.5 rounded-full hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -459,26 +643,75 @@ export default function ProductDetail() {
                   {/* Add to Bag */}
                   <button
                     type="button"
+                    disabled={selectedSizeStock <= 0 || maxAddable <= 0}
                     onClick={handleAddToCart}
-                    className="editorial-black-pill flex-1 py-2.5 px-3 text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg transition-all"
+                    className={`flex-1 py-2.5 px-3 text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all rounded-full font-bold ${
+                      selectedSizeStock <= 0
+                        ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+                        : maxAddable <= 0
+                        ? 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
+                        : 'editorial-black-pill cursor-pointer shadow-md hover:shadow-lg'
+                    }`}
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Add To Bag</span>
+                    <span>
+                      {selectedSizeStock <= 0
+                        ? `Out of Stock (${selectedSize})`
+                        : maxAddable <= 0
+                        ? `Max in Bag (${inCartQty})`
+                        : 'Add To Bag'}
+                    </span>
                   </button>
                 </div>
 
                 {/* Instant Checkout */}
                 <button
                   type="button"
+                  disabled={selectedSizeStock <= 0 || maxAddable <= 0}
                   onClick={() => {
+                    if (!isAuthenticated || !user) {
+                      navigate('/login');
+                      return;
+                    }
+                    if (selectedSizeStock <= 0 || maxAddable <= 0) return;
                     handleAddToCart();
-                    setToastMessage('Redirecting to express checkout...');
+                    navigate('/cart');
                   }}
-                  className="editorial-secondary-pill w-full py-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer shadow-xs hover:border-zinc-900"
+                  className={`w-full py-2 text-[11px] font-bold uppercase tracking-wider rounded-full border transition-all ${
+                    selectedSizeStock <= 0 || maxAddable <= 0
+                      ? 'bg-zinc-100 text-zinc-300 border-zinc-200 cursor-not-allowed'
+                      : 'editorial-secondary-pill cursor-pointer shadow-xs hover:border-zinc-900'
+                  }`}
                 >
                   Instant Checkout • Buy Now
                 </button>
               </div>
+
+              {/* Verified Buyer Rating Card */}
+              {hasPurchased && (
+                <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between gap-2.5 animate-fade-in">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-amber-950 flex items-center gap-1.5 truncate">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                      <span>{userExistingRating ? `Your Rating: ${userExistingRating.rating}★` : 'Verified Buyer • Rate Product'}</span>
+                    </p>
+                    <p className="text-[9px] text-amber-800/80 mt-0.5 truncate">
+                      {userExistingRating ? 'Click to edit your rating & review' : 'Rate this garment between 0 to 5 stars'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRatingScore(userExistingRating?.rating ?? 5);
+                      setRatingComment(userExistingRating?.comment || '');
+                      setShowRatingModal(true);
+                    }}
+                    className="editorial-black-pill px-3 py-1 text-[10px] uppercase tracking-wider flex-shrink-0 cursor-pointer shadow-xs"
+                  >
+                    {userExistingRating ? 'Edit Rating' : 'Rate'}
+                  </button>
+                </div>
+              )}
 
               {/* Trust Badges */}
               <div className="grid grid-cols-3 gap-1 py-1.5 px-2 bg-zinc-50/70 border border-zinc-200/60 rounded-lg text-center text-[9px] sm:text-[10px] font-medium text-zinc-600">
@@ -625,6 +858,105 @@ export default function ProductDetail() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════ BUYER RATING MODAL ═══════════════════════ */}
+      {showRatingModal && (
+        <div
+          onClick={() => setShowRatingModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-100 relative"
+          >
+            <button
+              type="button"
+              onClick={() => setShowRatingModal(false)}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <h3 className="font-heading font-black text-lg text-zinc-900 uppercase tracking-tight">
+                Rate &amp; Review Product
+              </h3>
+            </div>
+            <p className="text-[11px] text-zinc-500 mb-5">
+              Verified Buyer rating for <span className="font-bold text-zinc-800">{product?.title}</span>.
+            </p>
+
+            <form onSubmit={handleSubmitRating} className="space-y-4">
+              {/* Star selector 0 to 5 */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">
+                  Select Score (0 to 5 Stars): <span className="text-zinc-900 font-extrabold text-sm ml-1">{hoverRating || ratingScore} / 5</span>
+                </label>
+                <div className="flex items-center gap-2 py-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setRatingScore(star)}
+                      className="p-1 rounded-lg hover:scale-125 transition-transform cursor-pointer focus:outline-none"
+                    >
+                      <Star
+                        className={`w-7 h-7 transition-colors ${
+                          star <= (hoverRating || ratingScore)
+                            ? 'text-amber-400 fill-amber-400 drop-shadow-xs'
+                            : 'text-zinc-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setRatingScore(0)}
+                    className="ml-2 text-[9px] font-bold text-zinc-400 hover:text-zinc-700 uppercase underline"
+                  >
+                    Set 0
+                  </button>
+                </div>
+              </div>
+
+              {/* Review / Comment text */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                  Your Review (Optional)
+                </label>
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Share details about the fit, fabric quality, and finish..."
+                  rows={3}
+                  className="w-full border border-zinc-200 rounded-xl p-3 text-xs focus:border-zinc-900 outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingRating}
+                  className="editorial-black-pill flex-1 py-2.5 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Star className="w-3.5 h-3.5 fill-white" />
+                  <span>{isSubmittingRating ? 'Saving...' : (userExistingRating ? 'Update Rating' : 'Submit Rating')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRatingModal(false)}
+                  className="editorial-secondary-pill px-4 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

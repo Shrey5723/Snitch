@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, Navigate } from 'react-router';
 import {
   ChevronLeft,
   User,
@@ -15,8 +15,12 @@ import {
   Edit3,
   X,
   ShoppingBag,
+  Sparkles,
+  ArrowRight,
+  Star,
 } from 'lucide-react';
 import useAuth from '../../auth/Hooks/useAuth.js';
+import { rateProduct } from '../../products/services/product.api.js';
 
 const TABS = [
   { id: 'personal', label: 'Personal Info', icon: User },
@@ -26,8 +30,13 @@ const TABS = [
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading, error, successMessage, handleLogout, handleUpdateProfile, handleGetMe, clearMessages } = useAuth();
+  const { user, isAuthenticated, loading, error, successMessage, handleLogin, handleLogout, handleUpdateProfile, handleGetMe, clearMessages } = useAuth();
   const orders = useSelector((state) => state.cart?.orders || []);
+
+  const isSeller = user?.role === 'seller';
+  const availableTabs = isSeller
+    ? TABS.filter((tab) => tab.id === 'personal')
+    : TABS;
 
   const [activeTab, setActiveTab] = useState('personal');
   const [formData, setFormData] = useState({ fullName: '', contactNumber: '' });
@@ -38,13 +47,24 @@ export default function Profile() {
   const [toastMessage, setToastMessage] = useState(null);
   const [toastType, setToastType] = useState('success');
 
+  // Rating modal state in order history
+  const [ratingModalItem, setRatingModalItem] = useState(null); // { productId, title, image }
+  const [ratingScore, setRatingScore] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    } else {
+    if (isSeller && activeTab !== 'personal') {
+      setActiveTab('personal');
+    }
+  }, [isSeller, activeTab]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
       handleGetMe();
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (user) {
@@ -135,7 +155,20 @@ export default function Profile() {
     navigate('/');
   };
 
-  if (!isAuthenticated || !user) return null;
+  if (loading) {
+    return (
+      <div className="h-dvh bg-white flex flex-col items-center justify-center font-body select-none">
+        <div className="w-8 h-8 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">
+          Loading Snitch Profile...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="h-dvh bg-white text-zinc-900 font-body select-none flex flex-col overflow-hidden">
@@ -153,18 +186,30 @@ export default function Profile() {
       {/* ═══════ HEADER ═══════ */}
       <header className="bg-white/95 backdrop-blur-md border-b border-zinc-100 z-40 w-full flex-shrink-0">
         <div className="flex justify-between items-center px-3 sm:px-6 lg:px-8 h-12 sm:h-14 lg:h-16 w-full max-w-[1440px] mx-auto relative">
-          <Link to="/" className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider">
+          <Link
+            to={user?.role === 'seller' ? '/seller/dashboard' : '/'}
+            className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider"
+          >
             <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+            <span className="hidden sm:inline">{user?.role === 'seller' ? 'Dashboard' : 'Back to Shop'}</span>
           </Link>
           <div className="absolute left-1/2 transform -translate-x-1/2">
-            <Link to="/" className="inline-block text-center">
+            <Link to={user?.role === 'seller' ? '/seller/dashboard' : '/'} className="inline-block text-center">
               <h1 className="font-heading font-black text-[18px] sm:text-[22px] lg:text-[26px] tracking-[0.35em] text-zinc-900 uppercase leading-none">S N I T C H</h1>
             </Link>
           </div>
-          <Link to="/cart" className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors relative">
-            <ShoppingBag className="w-4 h-4" />
-          </Link>
+          {user?.role === 'seller' ? (
+            <Link
+              to="/seller/dashboard"
+              className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors text-xs font-bold uppercase tracking-wider hidden sm:block"
+            >
+              Seller Studio
+            </Link>
+          ) : (
+            <Link to="/cart" className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors relative">
+              <ShoppingBag className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </header>
 
@@ -189,7 +234,7 @@ export default function Profile() {
 
           {/* Tabs */}
           <nav className="flex lg:flex-col gap-1 flex-1 lg:flex-none">
-            {TABS.map((tab) => {
+            {availableTabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
@@ -280,7 +325,7 @@ export default function Profile() {
           )}
 
           {/* ─── ADDRESSES TAB ─── */}
-          {activeTab === 'addresses' && (
+          {!isSeller && activeTab === 'addresses' && (
             <div className="max-w-lg animate-fade-in">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-heading font-bold text-base lg:text-lg text-zinc-900 uppercase tracking-tight">Delivery Addresses</h3>
@@ -389,7 +434,7 @@ export default function Profile() {
           )}
 
           {/* ─── ORDER HISTORY TAB ─── */}
-          {activeTab === 'orders' && (
+          {!isSeller && activeTab === 'orders' && (
             <div className="max-w-2xl animate-fade-in">
               <h3 className="font-heading font-bold text-base lg:text-lg text-zinc-900 uppercase tracking-tight mb-4">Order History</h3>
 
@@ -405,54 +450,207 @@ export default function Profile() {
               )}
 
               <div className="space-y-3">
-                {orders.map((order) => (
-                  <div key={order.id} className="p-3 sm:p-4 rounded-xl border border-zinc-100 bg-zinc-50/40">
-                    {/* Order header */}
-                    <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-zinc-100">
-                      <div>
-                        <span className="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">{order.id}</span>
-                        <p className="text-[10px] text-zinc-500 mt-0.5">{formatDate(order.date)}</p>
+                {orders.map((order) => {
+                  const orderNum = order.orderNumber || order.id || 'Order';
+                  const orderDate = order.createdAt || order.date;
+                  const orderTotal = order.totalAmount || order.total;
+
+                  return (
+                    <div key={order._id || order.id} className="p-3 sm:p-4 rounded-xl border border-zinc-100 bg-zinc-50/40">
+                      {/* Order header */}
+                      <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-zinc-100">
+                        <div>
+                          <span className="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">{orderNum}</span>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">{formatDate(orderDate)}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            order.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600' :
+                            order.status === 'Delivered' ? 'bg-zinc-100 text-zinc-600' :
+                            'bg-amber-50 text-amber-600'
+                          }`}>{order.status || 'Confirmed'}</span>
+                          <p className="font-heading font-bold text-sm text-zinc-900 mt-0.5">{formatPrice(orderTotal)}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                          order.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600' :
-                          order.status === 'Delivered' ? 'bg-zinc-100 text-zinc-600' :
-                          'bg-amber-50 text-amber-600'
-                        }`}>{order.status}</span>
-                        <p className="font-heading font-bold text-sm text-zinc-900 mt-0.5">{formatPrice(order.total)}</p>
-                      </div>
-                    </div>
-                    {/* Order items */}
-                    <div className="space-y-1.5">
-                      {order.items.map((item, idx) => {
-                        const imgUrl = item.product?.images?.[0]?.url || (typeof item.product?.images?.[0] === 'string' ? item.product.images[0] : null);
-                        return (
-                          <div key={idx} className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
-                              {imgUrl ? (
-                                <img src={imgUrl} alt={item.product?.title} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-zinc-300">
-                                  <ShoppingBag className="w-4 h-4 stroke-1" />
+                      {/* Order items */}
+                      <div className="space-y-2">
+                        {order.items?.map((item, idx) => {
+                          const pId = item.product?._id || item.product;
+                          const title = item.product?.title || item.title || 'Snitch Garment';
+                          const imgUrl = item.image || item.product?.images?.[0]?.url || (typeof item.product?.images?.[0] === 'string' ? item.product.images[0] : null);
+
+                          return (
+                            <div key={idx} className="flex items-center justify-between gap-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
+                                  {imgUrl ? (
+                                    <img src={imgUrl} alt={title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-300">
+                                      <ShoppingBag className="w-4 h-4 stroke-1" />
+                                    </div>
+                                  )}
                                 </div>
+                                <div className="min-w-0">
+                                  {pId ? (
+                                    <Link to={`/product/${pId}`} className="text-xs font-semibold text-zinc-900 truncate hover:underline block">
+                                      {title}
+                                    </Link>
+                                  ) : (
+                                    <p className="text-xs font-semibold text-zinc-900 truncate">{title}</p>
+                                  )}
+                                  <p className="text-[10px] text-zinc-500">Size: {item.size} • {item.color} • Qty: {item.quantity}</p>
+                                </div>
+                              </div>
+
+                              {pId && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRatingModalItem({ productId: pId.toString(), title, image: imgUrl });
+                                    setRatingScore(5);
+                                    setRatingComment('');
+                                  }}
+                                  className="editorial-secondary-pill px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer flex-shrink-0 hover:bg-zinc-900 hover:text-white transition-all shadow-xs"
+                                >
+                                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                  <span>Rate</span>
+                                </button>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-zinc-900 truncate">{item.product?.title}</p>
-                              <p className="text-[10px] text-zinc-500">Size: {item.size} • {item.color} • Qty: {item.quantity}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
         </section>
       </main>
+
+      {/* ═══════ RATING MODAL (ORDER HISTORY) ═══════ */}
+      {ratingModalItem && (
+        <div
+          onClick={() => setRatingModalItem(null)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-100 relative"
+          >
+            <button
+              type="button"
+              onClick={() => setRatingModalItem(null)}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <h3 className="font-heading font-black text-lg text-zinc-900 uppercase tracking-tight">
+                Rate &amp; Review Garment
+              </h3>
+            </div>
+            <p className="text-[11px] text-zinc-500 mb-4">
+              Your verified review for <span className="font-bold text-zinc-800">{ratingModalItem.title}</span>.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!ratingModalItem?.productId) return;
+                try {
+                  setIsSubmittingRating(true);
+                  const res = await rateProduct(ratingModalItem.productId, {
+                    rating: ratingScore,
+                    comment: ratingComment,
+                  });
+                  if (res.success) {
+                    showToast(res.message || 'Rating submitted successfully', 'success');
+                    setRatingModalItem(null);
+                  }
+                } catch (err) {
+                  showToast(err.response?.data?.message || 'Failed to submit rating', 'error');
+                } finally {
+                  setIsSubmittingRating(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              {/* Star selector 0 to 5 */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">
+                  Select Score (0 to 5 Stars): <span className="text-zinc-900 font-extrabold text-sm ml-1">{hoverRating || ratingScore} / 5</span>
+                </label>
+                <div className="flex items-center gap-2 py-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setRatingScore(star)}
+                      className="p-1 rounded-lg hover:scale-125 transition-transform cursor-pointer focus:outline-none"
+                    >
+                      <Star
+                        className={`w-7 h-7 transition-colors ${
+                          star <= (hoverRating || ratingScore)
+                            ? 'text-amber-400 fill-amber-400 drop-shadow-xs'
+                            : 'text-zinc-200'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setRatingScore(0)}
+                    className="ml-2 text-[9px] font-bold text-zinc-400 hover:text-zinc-700 uppercase underline"
+                  >
+                    Set 0
+                  </button>
+                </div>
+              </div>
+
+              {/* Review / Comment text */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                  Your Review (Optional)
+                </label>
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Share details about the fit, fabric quality, and comfort..."
+                  rows={3}
+                  className="w-full border border-zinc-200 rounded-xl p-3 text-xs focus:border-zinc-900 outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingRating}
+                  className="editorial-black-pill flex-1 py-2.5 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Star className="w-3.5 h-3.5 fill-white" />
+                  <span>{isSubmittingRating ? 'Saving...' : 'Submit Rating'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRatingModalItem(null)}
+                  className="editorial-secondary-pill px-4 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

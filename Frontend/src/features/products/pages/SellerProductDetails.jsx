@@ -44,13 +44,6 @@ const CATEGORIES = [
   'ACCESSORIES'
 ];
 
-// Curated Luxury Color Palettes matching Screenshot 1
-const COLORS = [
-  { id: 'obsidian-black', name: 'OBSIDIAN BLACK', hex: '#18181b', ringClass: 'border-zinc-900' },
-  { id: 'charcoal-grey', name: 'CHARCOAL GREY', hex: '#52525b', ringClass: 'border-zinc-500' },
-  { id: 'concrete-stone', name: 'CONCRETE STONE', hex: '#a1a1aa', ringClass: 'border-zinc-300' }
-];
-
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export default function SellerProductDetails() {
@@ -61,9 +54,6 @@ export default function SellerProductDetails() {
 
   // Active product details state
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [selectedSize, setSelectedSize] = useState('M');
-  const [previewQuantity, setPreviewQuantity] = useState(1);
   const [activeAccordion, setActiveAccordion] = useState('specs');
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -299,11 +289,11 @@ export default function SellerProductDetails() {
           {/* Left: Back to Seller Dashboard */}
           <div className="flex items-center gap-3">
             <Link
-              to="/seller/products"
+              to="/seller/dashboard"
               className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 text-xs font-bold uppercase tracking-wider cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Seller Studio</span>
+              <span className="hidden sm:inline">Dashboard</span>
             </Link>
             <span className="text-zinc-300 hidden sm:inline">•</span>
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-zinc-400 hidden md:inline">
@@ -313,7 +303,7 @@ export default function SellerProductDetails() {
 
           {/* Center Brand Logo */}
           <div className="flex flex-col items-center justify-center">
-            <Link to="/" className="inline-block group text-center">
+            <Link to="/seller/dashboard" className="inline-block group text-center">
               <h1 className="font-heading font-black text-xl sm:text-2xl tracking-[0.35em] text-zinc-900 uppercase leading-none">
                 S N I T C H
               </h1>
@@ -333,7 +323,7 @@ export default function SellerProductDetails() {
               className="editorial-secondary-pill p-2 sm:px-3 sm:py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Live Storefront</span>
+              <span className="hidden sm:inline">Storefront</span>
             </Link>
 
             {/* Share Link */}
@@ -357,6 +347,25 @@ export default function SellerProductDetails() {
               <span>{isSaving ? 'Saving...' : 'Save Stock'}</span>
             </button>
 
+            {/* Profile Avatar / Logo (Takes seller to /profile) */}
+            <Link
+              to="/profile"
+              className="p-1 rounded-full hover:bg-zinc-100 transition-colors flex items-center justify-center cursor-pointer border border-zinc-200"
+              title={user?.fullName ? `${user.fullName} (Profile)` : "Seller Profile"}
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.fullName || "Seller"}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-zinc-900 text-white font-heading font-black text-xs flex items-center justify-center">
+                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'S'}
+                </div>
+              )}
+            </Link>
+
           </div>
 
         </div>
@@ -368,12 +377,18 @@ export default function SellerProductDetails() {
         {/* BREADCRUMB & METRIC RIBBON */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           
-          <div className="flex items-center text-[10px] sm:text-xs font-semibold text-zinc-400 gap-1.5 uppercase tracking-widest overflow-x-auto whitespace-nowrap scrollbar-none">
-            <Link to="/" className="hover:text-zinc-900 transition-colors">Catalog</Link>
-            <ChevronRight className="w-3 h-3 text-zinc-300" />
-            <Link to="/seller/products" className="hover:text-zinc-900 transition-colors">Seller Drops</Link>
-            <ChevronRight className="w-3 h-3 text-zinc-300" />
-            <span className="text-zinc-900 font-bold truncate max-w-[180px] sm:max-w-none">{editTitle || 'Drop Specifications'}</span>
+          <div className="flex items-center text-xs font-bold text-zinc-700 gap-2 uppercase tracking-wider overflow-x-auto whitespace-nowrap scrollbar-none bg-white px-3.5 py-1.5 rounded-full border border-zinc-200/90 shadow-xs">
+            <Link to="/" className="text-zinc-700 hover:text-zinc-950 hover:underline transition-colors font-bold">
+              Catalog
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-400 stroke-[2.5]" />
+            <Link to="/seller/products" className="text-zinc-700 hover:text-zinc-950 hover:underline transition-colors font-bold">
+              Seller Drops
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-400 stroke-[2.5]" />
+            <span className="text-zinc-950 font-black truncate max-w-[200px] sm:max-w-none">
+              {editTitle || 'Drop Specifications'}
+            </span>
           </div>
 
           {/* Quick status badge */}
@@ -409,11 +424,8 @@ export default function SellerProductDetails() {
         {!loading && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">
             
-            {/* ══════════════════════════════════════════════════════════════════════
-                LEFT COLUMN: 7-PHOTO GALLERY & LIVE BUYER EXPERIENCE SIMULATOR
-                (Includes exact elements from Screenshot 1 and Screenshot 2)
-            ══════════════════════════════════════════════════════════════════════ */}
-            <div className="lg:col-span-6 xl:col-span-6 flex flex-col space-y-6">
+            {/* LEFT COLUMN: CATEGORY RIBBON & 7-PHOTO GALLERY */}
+            <div className="lg:col-span-6 xl:col-span-6 flex flex-col space-y-6 lg:sticky lg:top-24 self-start">
               
               {/* Category Filter Ribbon matching Screenshot 2 */}
               <div className="bg-white p-3.5 rounded-2xl border border-zinc-200 shadow-xs">
@@ -512,150 +524,6 @@ export default function SellerProductDetails() {
                 </div>
 
               </div>
-
-              {/* ─────────────────────────────────────────────────────────────
-                  EXACT UI FROM SCREENSHOT 1:
-                  COLOR PICKER, SIZE SELECTOR, QUANTITY & PILL ACTION BUTTONS
-              ───────────────────────────────────────────────────────────── */}
-              <div className="bg-white p-6 sm:p-7 rounded-3xl border border-zinc-200 shadow-xs space-y-6">
-                
-                <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-                  <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">
-                    Buyer Experience Simulator
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Live UI Preview
-                  </span>
-                </div>
-
-                {/* 1. COLOR SECTION MATCHING SCREENSHOT 1 */}
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-extrabold tracking-wider uppercase text-zinc-900 mb-2.5">
-                    <span>COLOR:</span>
-                    <span className="text-zinc-500 font-semibold">{selectedColor.name}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {COLORS.map((col) => {
-                      const isSelected = selectedColor.id === col.id;
-                      return (
-                        <button
-                          key={col.id}
-                          type="button"
-                          onClick={() => setSelectedColor(col)}
-                          className={`w-9 h-9 rounded-full transition-all flex items-center justify-center cursor-pointer relative ${
-                            isSelected
-                              ? 'ring-2 ring-zinc-900 ring-offset-2 scale-105'
-                              : 'opacity-80 hover:opacity-100 hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: col.hex }}
-                          title={col.name}
-                        >
-                          {isSelected && (
-                            <Check className="w-4 h-4 text-white drop-shadow stroke-[2.5]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 2. SELECT SIZE & SIZE GUIDE MATCHING SCREENSHOT 1 */}
-                <div>
-                  <div className="flex justify-between items-center mb-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-extrabold tracking-wider uppercase text-zinc-900">
-                      <span>SELECT SIZE:</span>
-                      <span className="text-zinc-500 font-semibold">{selectedSize}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowSizeGuide(true)}
-                      className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 underline transition-colors cursor-pointer"
-                    >
-                      Size Guide
-                    </button>
-                  </div>
-
-                  {/* Size Pill Buttons */}
-                  <div className="flex flex-wrap gap-2.5">
-                    {SIZES.map((sz) => {
-                      const isSelected = selectedSize === sz;
-                      const stockForSize = sizeStock[sz] || 0;
-                      return (
-                        <button
-                          key={sz}
-                          type="button"
-                          onClick={() => setSelectedSize(sz)}
-                          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer relative ${
-                            isSelected
-                              ? 'bg-zinc-900 text-white shadow-xs'
-                              : 'bg-white border border-zinc-200 text-zinc-700 hover:border-zinc-900 hover:text-zinc-900'
-                          }`}
-                        >
-                          <span>{sz}</span>
-                          {stockForSize === 0 && (
-                            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[7px] font-black px-1 rounded-full">
-                              0
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. QUANTITY COUNTER & ADD TO BAG PILL MATCHING SCREENSHOT 1 */}
-                <div className="space-y-3 pt-1">
-                  
-                  <div className="flex gap-3">
-                    
-                    {/* [-  1  +] Quantity Counter Pill */}
-                    <div className="flex items-center border border-zinc-200 rounded-full px-4 py-2.5 w-32 justify-between bg-white flex-shrink-0 shadow-xs">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewQuantity((q) => Math.max(1, q - 1))}
-                        className="p-1 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors cursor-pointer"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-
-                      <span className="font-bold text-sm text-zinc-900">{previewQuantity}</span>
-
-                      <button
-                        type="button"
-                        onClick={() => setPreviewQuantity((q) => q + 1)}
-                        className="p-1 rounded-full hover:bg-zinc-100 text-zinc-700 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* ADD TO BAG Primary Black Pill */}
-                    <button
-                      type="button"
-                      onClick={() => showToast(`Simulated: Added ${previewQuantity} × ${editTitle} (Size ${selectedSize}) to bag`)}
-                      className="editorial-black-pill flex-1 py-3 px-5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg transition-all"
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>ADD TO BAG</span>
-                    </button>
-
-                  </div>
-
-                  {/* 4. INSTANT CHECKOUT • BUY NOW Pill Matching Screenshot 1 */}
-                  <button
-                    type="button"
-                    onClick={() => showToast('Simulated: Instant checkout flow triggered for buyer')}
-                    className="editorial-secondary-pill w-full py-3 text-xs font-bold uppercase tracking-wider cursor-pointer shadow-xs hover:border-zinc-900 bg-white"
-                  >
-                    INSTANT CHECKOUT • BUY NOW
-                  </button>
-
-                </div>
-
-              </div>
-
             </div>
 
             {/* ══════════════════════════════════════════════════════════════════════
@@ -858,8 +726,8 @@ export default function SellerProductDetails() {
                         onChange={(e) => setEditPriceAmount(Number(e.target.value))}
                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-zinc-900 outline-none focus:border-zinc-900 transition-colors"
                       />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-zinc-400">
-                        ₹
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-zinc-400 select-none">
+                        {editPriceCurrency === 'USD' ? '$' : editPriceCurrency === 'EUR' ? '€' : editPriceCurrency === 'GBP' ? '£' : '₹'}
                       </span>
                     </div>
                   </div>
@@ -926,26 +794,26 @@ export default function SellerProductDetails() {
               </div>
 
               {/* ── 5. SAVE CHANGES STICKY CALL-TO-ACTION ── */}
-              <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-6 z-30">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <div className="w-10 h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-zinc-200/90 shadow-xl flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3.5 sm:gap-4 sticky bottom-6 z-30 max-w-full box-border overflow-hidden">
+                <div className="flex items-center gap-3 min-w-0 w-full xl:w-auto flex-1">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-xs">
                     <Save className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 truncate">
                       Ready to Publish Updates?
                     </h4>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-zinc-500 truncate">
                       Changes will reflect immediately across customer storefronts.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2.5 w-full xl:w-auto shrink-0 justify-end">
                   <button
                     type="button"
                     onClick={() => navigate('/seller/products')}
-                    className="editorial-secondary-pill flex-1 sm:flex-none px-5 py-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                    className="editorial-secondary-pill flex-1 xl:flex-none px-4 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors hover:bg-zinc-100 shrink-0 text-center"
                   >
                     Cancel
                   </button>
@@ -954,7 +822,7 @@ export default function SellerProductDetails() {
                     type="button"
                     onClick={handleSaveAll}
                     disabled={isSaving}
-                    className="editorial-black-pill flex-1 sm:flex-none px-7 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-xl disabled:opacity-50"
+                    className="editorial-black-pill flex-1 xl:flex-none px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-xl disabled:opacity-50 shrink-0 whitespace-nowrap"
                   >
                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                     <span>{isSaving ? 'Publishing...' : 'Save & Publish'}</span>

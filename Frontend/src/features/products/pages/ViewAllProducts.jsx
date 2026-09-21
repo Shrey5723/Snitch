@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useSelector } from 'react-redux';
 import {
   Plus,
   Search,
@@ -47,6 +48,7 @@ const CURRENCY_SYMBOLS = {
 
 export default function ViewAllProducts() {
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth || {});
   const { handleGetSellerProducts, sellerProduct, loading, error, clearMessages } = useProduct();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,7 +181,7 @@ export default function ViewAllProducts() {
           
           {/* Brand Logo & Studio Subtitle */}
           <div className="flex items-center gap-4 sm:gap-6">
-            <Link to="/" className="inline-block group">
+            <Link to="/seller/dashboard" className="inline-block group">
               <span className="font-heading font-black text-xl sm:text-2xl tracking-[0.35em] text-zinc-900 uppercase">
                 S N I T C H
               </span>
@@ -187,14 +189,20 @@ export default function ViewAllProducts() {
 
             <div className="h-4 w-px bg-zinc-200 hidden md:block"></div>
 
-            <div className="hidden md:flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-zinc-400">
-              <span>Seller Studio</span>
-              <span>•</span>
-              <span className="text-zinc-800">Collection Inventory</span>
-            </div>
+            <nav className="hidden md:flex items-center gap-4 text-xs font-bold tracking-wider uppercase">
+              <Link to="/seller/dashboard" className="text-zinc-500 hover:text-zinc-900 transition-colors">
+                Dashboard
+              </Link>
+              <Link to="/seller/products" className="text-zinc-900 border-b border-zinc-900 pb-0.5">
+                Inventory
+              </Link>
+              <Link to="/products/create" className="text-zinc-500 hover:text-zinc-900 transition-colors">
+                New Product
+              </Link>
+            </nav>
           </div>
 
-          {/* Top Actions: Refresh, Status Badge & Create Drop Button */}
+          {/* Top Actions: Refresh, Create Drop Button & Profile Avatar */}
           <div className="flex items-center gap-2 sm:gap-4">
             
             {copiedToast && (
@@ -219,6 +227,25 @@ export default function ViewAllProducts() {
             >
               <Plus className="w-4 h-4" />
               <span>Create New Drop</span>
+            </Link>
+
+            {/* Profile Avatar / Logo (Takes seller to /profile) */}
+            <Link
+              to="/profile"
+              className="p-1 rounded-full hover:bg-zinc-100 transition-colors flex items-center justify-center cursor-pointer border border-zinc-200"
+              title={user?.fullName ? `${user.fullName} (Profile)` : "Seller Profile"}
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.fullName || "Seller"}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-zinc-900 text-white font-heading font-black text-xs flex items-center justify-center">
+                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'S'}
+                </div>
+              )}
             </Link>
 
           </div>

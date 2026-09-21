@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router';
 
-const Protected = ({ children, requireSeller = false }) => {
+const Protected = ({ children, requireSeller = false, requireBuyer = false, requireAuth = true }) => {
     const { user, loading, isAuthenticated } = useSelector((state) => state.auth || {});
 
     if (loading) {
@@ -13,12 +13,18 @@ const Protected = ({ children, requireSeller = false }) => {
         );
     }
 
-    if (!isAuthenticated && !user) {
+    if (requireAuth && !isAuthenticated && !user) {
         return <Navigate to="/login" replace />;
     }
 
+    // Block buyers from accessing seller pages
     if (requireSeller && user?.role !== 'seller') {
         return <Navigate to="/" replace />;
+    }
+
+    // Redirect sellers trying to access buyer-only pages (e.g. cart)
+    if (requireBuyer && user?.role === 'seller') {
+        return <Navigate to="/seller/dashboard" replace />;
     }
 
     return <>{children}</>;

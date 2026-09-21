@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
     }],
     googleId: { type: String, default: null },
     avatar: { type: String, default: '' },
+    wishlist: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'product'
+    }],
 }, {
     timestamps: true
 });

@@ -38,8 +38,9 @@ export default function Login() {
           setLocalSuccess('Logged in with Google successfully! Welcome to Snitch.');
           setSearchParams({});
 
+          const isSeller = user?.role === 'seller' || user?.isSeller;
           setTimeout(() => {
-            navigate('/');
+            navigate(isSeller ? '/seller/dashboard' : '/');
           }, 1200);
         } catch (err) {
           console.error('Failed to retrieve Google authenticated user:', err);
@@ -91,10 +92,11 @@ export default function Login() {
     });
 
     if (result.success) {
-      setLocalSuccess('Signed in successfully! Welcome to Snitch.');
+      const isSeller = result.data?.user?.role === 'seller' || result.data?.user?.isSeller;
+      setLocalSuccess(`Signed in successfully! Redirecting to ${isSeller ? 'Seller Dashboard' : 'Snitch'}...`);
       setTimeout(() => {
-        navigate('/');
-      }, 1200);
+        navigate(isSeller ? '/seller/dashboard' : '/');
+      }, 1000);
     }
   };
 
